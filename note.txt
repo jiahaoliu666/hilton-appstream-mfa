@@ -1,0 +1,113 @@
+
+# 簡化版 Next.js + AWS Amplify AppStream 2.0 MFA 專案目錄結構
+
+```
+├── .env.local               # 環境變數
+├── .gitignore
+├── next.config.js           # Next.js 配置
+├── package.json             # 專案依賴
+├── tsconfig.json            # TypeScript 配置
+├── tailwind.config.js       # 樣式配置
+├── public/                  # 靜態資源
+│   └── assets/              # 圖片和圖標
+│
+├── src/
+│   ├── pages/               # 頁面路由
+│   │   ├── _app.tsx         # 應用入口
+│   │   ├── index.tsx        # 首頁/登入頁(含登出按鈕、忘記密碼)
+│   │   ├── appstream.tsx    # AppStream 頁面(含 Web/APP 模式)
+│   │   │
+│   │   └── api/             # API 端點
+│   │       ├── auth.ts      # 認證相關 API(登入、MFA、登出、密碼重設)
+│   │       └── stream.ts    # AppStream URL 生成 API
+│   │
+│   ├── components/          # UI 元件
+│   │   ├── auth/            # 認證相關元件
+│   │   │   ├── AuthContext.tsx # 認證上下文
+│   │   │   └── ProtectedRoute.tsx # 保護路由
+│   │   ├── MfaSection.tsx   # MFA 驗證
+│   │   ├── ForgotPasswordSection.tsx  # 忘記密碼
+│   │   ├── WebModeSection.tsx # Web 模式
+│   │   └── AppModeSection.tsx # APP 模式
+│   │
+│   ├── lib/                 # 核心庫
+│   │   ├── amplify.ts       # Amplify 配置
+│   │   ├── auth.ts          # 認證函數(包含所有認證相關功能)
+│   │   └── appstream.ts     # AppStream 函數
+│   │
+│   ├── hooks/               # 自定義 Hook
+│   │   ├── useAuth.ts       # 統一認證狀態管理
+│   │   └── useStream.ts     # AppStream 狀態管理
+│   │
+│   ├── types/               # 類型定義
+│   │   └── index.ts         # 集中類型
+│   │
+│   ├── styles/              # 樣式文件
+│   │   └── globals.css      # 全局樣式
+│
+└── amplify/                 # Amplify 配置
+    └── backend/             # 後端資源定義
+```
+
+## 核心功能和檔案說明：
+
+### 1. 簡化的頁面結構
+
+- **整合的登入頁面**: `/src/pages/index.tsx`
+  - 集成所有認證相關功能於一個頁面
+  - 根據應用狀態顯示不同區段：登入、MFA、忘記密碼、重設密碼
+  - 包含登出按鈕
+  - 使用狀態管理在同一頁面切換不同表單
+
+- **AppStream 頁面**: `/src/pages/appstream.tsx`
+  - 整合 Web 模式和 APP 模式在同一頁面
+  - 包含登出按鈕
+  - 根據用戶選擇顯示不同的模式區段
+
+### 2. 分區式組件
+
+- **認證區段組件**:
+  - `LoginSection.tsx` - 登入表單區段
+  - `MfaSection.tsx` - MFA 驗證區段
+  - `ForgotPasswordSection.tsx` - 忘記密碼區段
+  - `ResetPasswordSection.tsx` - 重設密碼區段
+  - 這些組件被設計為在同一頁面內切換顯示
+
+- **AppStream 區段組件**:
+  - `WebModeSection.tsx` - Web 模式區段
+  - `AppModeSection.tsx` - APP 模式區段
+  - 同樣設計為在同一頁面內切換顯示
+
+- **通用組件**:
+  - `LogoutButton.tsx` - 可在各頁面使用的登出按鈕
+
+### 3. 統一的 API 處理
+
+- **認證 API**: `/src/pages/api/auth.ts`
+  - 使用查詢參數或請求體區分不同的認證操作
+  - 處理登入、MFA 驗證、登出、密碼重設等所有認證相關請求
+
+- **AppStream API**: `/src/pages/api/stream.ts`
+  - 處理 AppStream URL 生成
+  - 支援 Web 和 APP 模式的不同參數
+
+### 4. 簡化的狀態管理
+
+- **應用狀態常數**: `/src/constants/appState.ts`
+  - 定義應用可能的狀態：`LOGIN`、`MFA`、`FORGOT_PASSWORD`、`RESET_PASSWORD`
+  - 用於控制在同一頁面中顯示哪個區段
+
+- **統一認證 Hook**: `/src/hooks/useAuth.ts`
+  - 提供所有認證相關功能
+  - 管理應用狀態轉換
+  - 處理表單提交和驗證
+
+### 5. AWS 整合
+
+- **簡化的 Auth 庫**: `/src/lib/auth.ts`
+  - 封裝所有 Cognito 相關操作
+  - 包含登入、MFA、密碼重設等所有認證功能
+
+- **Amplify 配置**: `/src/lib/amplify.ts`
+  - 初始化 Amplify 和 AWS SDK
+  - 配置 Cognito 和 AppStream 服務
