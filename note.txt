@@ -110,3 +110,19 @@
 - **Amplify 配置**: `/src/lib/amplify.ts`
   - 初始化 Amplify 和 AWS SDK
   - 配置 Cognito 和 AppStream 服務
+
+
+
+----
+需求：
+登入介面
+首次登入更改密碼
+MFA 頁面
+忘記密碼
+統一通知消息樣式
+使用 Cognito 進行登入驗證以及 MFA 機制
+使用 AWS SDK for JavaScript v3 串 Appstream 功能
+部署到 Amplify 
+響應式設計
+各種裝置、手機等嘗試登入
+環境變數
