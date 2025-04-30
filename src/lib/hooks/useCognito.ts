@@ -7,6 +7,7 @@ import {
   CognitoUserAttribute
 } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
+import { showError, showSuccess, mapCognitoErrorToMessage } from '@/lib/utils/notification';
 
 // 創建用戶池實例
 const userPool = new CognitoUserPool({
@@ -56,6 +57,7 @@ export const useCognito = () => {
         });
       });
 
+      showSuccess('登入成功');
       return { success: true, session };
     } catch (err) {
       const cognitoError = err as CognitoError;
@@ -77,6 +79,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
+      showError(errorMessage);
       return { success: false };
     } finally {
       setLoading(false);
@@ -88,6 +91,7 @@ export const useCognito = () => {
     const currentUser = userPool.getCurrentUser();
     if (currentUser) {
       currentUser.signOut();
+      showSuccess('已成功登出');
     }
   }, []);
 
@@ -172,27 +176,21 @@ export const useCognito = () => {
         });
       });
 
+      showSuccess('註冊成功，請檢查您的郵箱進行確認');
       return { success: true, result };
     } catch (err) {
       const cognitoError = err as CognitoError;
       let errorMessage = '註冊失敗';
 
       // 處理常見的註冊錯誤
-      switch (cognitoError.code) {
-        case 'UsernameExistsException':
-          errorMessage = '用戶名已存在';
-          break;
-        case 'InvalidPasswordException':
-          errorMessage = '密碼不符合要求';
-          break;
-        case 'InvalidParameterException':
-          errorMessage = '參數不符合要求';
-          break;
-        default:
-          errorMessage = cognitoError.message || '註冊過程發生錯誤';
+      if (cognitoError.code) {
+        errorMessage = mapCognitoErrorToMessage(cognitoError.code);
+      } else {
+        errorMessage = cognitoError.message || '註冊過程發生錯誤';
       }
 
       setError(errorMessage);
+      showError(errorMessage);
       return { success: false };
     } finally {
       setLoading(false);
@@ -221,10 +219,16 @@ export const useCognito = () => {
         });
       });
 
+      showSuccess('重置密碼的驗證碼已發送到您的郵箱');
       return true;
     } catch (err) {
       const cognitoError = err as CognitoError;
-      setError(cognitoError.message || '重置密碼過程發生錯誤');
+      const errorMessage = cognitoError.code 
+        ? mapCognitoErrorToMessage(cognitoError.code) 
+        : (cognitoError.message || '重置密碼過程發生錯誤');
+      
+      setError(errorMessage);
+      showError(errorMessage);
       return false;
     } finally {
       setLoading(false);
@@ -257,10 +261,16 @@ export const useCognito = () => {
         });
       });
 
+      showSuccess('密碼重置成功，請使用新密碼登入');
       return true;
     } catch (err) {
       const cognitoError = err as CognitoError;
-      setError(cognitoError.message || '確認新密碼過程發生錯誤');
+      const errorMessage = cognitoError.code 
+        ? mapCognitoErrorToMessage(cognitoError.code) 
+        : (cognitoError.message || '確認新密碼過程發生錯誤');
+      
+      setError(errorMessage);
+      showError(errorMessage);
       return false;
     } finally {
       setLoading(false);

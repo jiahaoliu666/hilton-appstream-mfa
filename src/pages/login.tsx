@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
+import { showError } from '@/lib/utils/notification';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [localError, setLocalError] = useState('');
   const router = useRouter();
   const { login, isAuthenticated, loading, error } = useAuth();
 
@@ -17,12 +17,18 @@ export default function Login() {
     }
   }, [isAuthenticated, router, loading]);
 
+  // 監視 error 的變化來顯示 toast
+  useEffect(() => {
+    if (error) {
+      showError(error);
+    }
+  }, [error]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError('');
 
     if (!username || !password) {
-      setLocalError('請輸入用戶名和密碼');
+      showError('請輸入用戶名和密碼');
       return;
     }
 
@@ -33,12 +39,9 @@ export default function Login() {
         router.push('/');
       }
     } catch (err) {
-      setLocalError('登入過程發生錯誤，請稍後再試');
+      showError('登入過程發生錯誤，請稍後再試');
     }
   };
-
-  // 顯示的錯誤訊息（優先顯示本地錯誤）
-  const displayError = localError || error;
 
   return (
     <>
@@ -63,18 +66,6 @@ export default function Login() {
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
           <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>登入</h1>
-          
-          {displayError && (
-            <div style={{
-              padding: '0.75rem',
-              marginBottom: '1rem',
-              backgroundColor: '#ffebee',
-              color: '#c62828',
-              borderRadius: '4px'
-            }}>
-              {displayError}
-            </div>
-          )}
           
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '1rem' }}>

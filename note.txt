@@ -11,7 +11,9 @@ hilton-appstream-mfa/
 │   │   ├── config/
 │   │   │   └── cognito.ts           # AWS Cognito 配置
 │   │   └── hooks/
-│   │       └── useCognito.ts        # Cognito 功能自定義 Hook
+│   │   │    └── useCognito.ts        # Cognito 功能自定義 Hook
+│   │   └── utils/
+│   │       └── notification.ts      # 通知功能
 │   ├── pages/
 │   │   ├── api/
 │   │   ├── _app.tsx                 # 應用入口
@@ -20,13 +22,6 @@ hilton-appstream-mfa/
 │   │   └── login.tsx                # 登入頁面
 │   └── styles/
 │       └── globals.css              # 全局樣式
-├── .gitignore
-├── note.txt
-├── package-lock.json 
-├── package.json
-├── postcss.config.mjs
-├── README.md                        # 專案說明文檔
-└── tsconfig.json                    # TypeScript 配置
 
 
 主要文件說明
