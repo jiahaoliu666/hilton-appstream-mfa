@@ -17,13 +17,6 @@ export default function Login() {
     }
   }, [isAuthenticated, router, loading]);
 
-  // 監視 error 的變化來顯示 toast
-  useEffect(() => {
-    if (error) {
-      showError(error);
-    }
-  }, [error]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -39,7 +32,7 @@ export default function Login() {
         router.push('/');
       }
     } catch (err) {
-      showError('登入過程發生錯誤，請稍後再試');
+      // 移除重複的錯誤顯示
     }
   };
 
