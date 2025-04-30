@@ -80,9 +80,11 @@ export const showWarning = (message: string, options?: NotificationOptions) => {
 export const mapCognitoErrorToMessage = (errorCode: string): string => {
   switch (errorCode) {
     case 'UserNotFoundException':
-      return '用戶名不存在';
+      return '查無此用戶，請向系統管理員註冊';
     case 'NotAuthorizedException':
-      return '密碼不正確';
+      return '查無此用戶，或密碼不正確';
+    case 'ResourceNotFoundException':
+      return '系統配置錯誤：認證服務未正確設置，請聯繫系統管理員';
     case 'UserNotConfirmedException':
       return '用戶尚未確認';
     case 'UsernameExistsException':

@@ -63,19 +63,30 @@ export const useCognito = () => {
       const cognitoError = err as CognitoError;
       let errorMessage = '登入失敗';
 
+      // 添加錯誤日誌以便調試
+      console.log('Cognito Error:', {
+        code: cognitoError.code,
+        name: cognitoError.name,
+        message: cognitoError.message
+      });
+
       // 處理常見的 Cognito 錯誤
-      switch (cognitoError.code) {
-        case 'UserNotFoundException':
-          errorMessage = '用戶名不存在';
-          break;
-        case 'NotAuthorizedException':
-          errorMessage = '密碼不正確';
-          break;
-        case 'UserNotConfirmedException':
-          errorMessage = '用戶尚未確認';
-          break;
-        default:
-          errorMessage = cognitoError.message || '登入過程發生錯誤';
+      if (cognitoError.name === 'UserNotFoundException' || 
+          cognitoError.message?.includes('User does not exist')) {
+        errorMessage = '查無此用戶，請向系統管理員註冊';
+      } else if (cognitoError.name === 'NotAuthorizedException' || 
+                 cognitoError.message?.includes('Incorrect username or password')) {
+        // Cognito出於安全考量，將未註冊用戶和密碼錯誤返回相同的錯誤代碼
+        errorMessage = '查無此用戶，或密碼不正確';
+      } else if (cognitoError.name === 'ResourceNotFoundException' || 
+                 cognitoError.code === 'ResourceNotFoundException' ||
+                 cognitoError.message?.includes('User pool client') && 
+                 cognitoError.message?.includes('does not exist')) {
+        errorMessage = '認證服務未正確設置，請聯繫系統管理員';
+      } else if (cognitoError.name === 'UserNotConfirmedException') {
+        errorMessage = '用戶尚未確認';
+      } else {
+        errorMessage = cognitoError.message || '登入過程發生錯誤';
       }
 
       setError(errorMessage);
