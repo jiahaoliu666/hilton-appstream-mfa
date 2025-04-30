@@ -51,7 +51,7 @@ export default function Login() {
   return (
     <>
       <Head>
-        <title>Hilton AppStream 系統登入</title>
+        <title>Hilton AppStream 登入系統</title>
         <meta name="description" content="AppStream 登入系統<" />
       </Head>
       <div style={{
