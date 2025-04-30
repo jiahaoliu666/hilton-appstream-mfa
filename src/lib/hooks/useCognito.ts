@@ -24,11 +24,15 @@ type CognitoError = {
 export const useCognito = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [newPasswordRequired, setNewPasswordRequired] = useState<boolean>(false);
+  const [currentCognitoUser, setCurrentCognitoUser] = useState<CognitoUser | null>(null);
+  const [userAttributes, setUserAttributes] = useState<any>(null);
 
   // 登入
-  const signIn = useCallback(async (username: string, password: string): Promise<{ success: boolean; session?: CognitoUserSession }> => {
+  const signIn = useCallback(async (username: string, password: string): Promise<{ success: boolean; session?: CognitoUserSession; newPasswordRequired?: boolean }> => {
     setLoading(true);
     setError(null);
+    setNewPasswordRequired(false);
 
     try {
       const authenticationDetails = new AuthenticationDetails({
@@ -42,23 +46,30 @@ export const useCognito = () => {
       });
 
       // 進行身份驗證
-      const session = await new Promise<CognitoUserSession>((resolve, reject) => {
+      const result = await new Promise<any>((resolve, reject) => {
         cognitoUser.authenticateUser(authenticationDetails, {
-          onSuccess: (result) => {
-            resolve(result);
+          onSuccess: (session) => {
+            resolve({ session, newPasswordRequired: false });
           },
           onFailure: (err) => {
             reject(err);
           },
           newPasswordRequired: (userAttributes, requiredAttributes) => {
-            // 這裡可以擴展處理首次登入需要更改密碼的情況
-            reject(new Error('需要設置新密碼'));
+            // 處理首次登入需要更改密碼的情況
+            setCurrentCognitoUser(cognitoUser);
+            setUserAttributes(userAttributes);
+            setNewPasswordRequired(true);
+            resolve({ newPasswordRequired: true, userAttributes, requiredAttributes });
           }
         });
       });
 
+      if (result.newPasswordRequired) {
+        return { success: false, newPasswordRequired: true };
+      }
+
       showSuccess('登入成功');
-      return { success: true, session };
+      return { success: true, session: result.session };
     } catch (err) {
       const cognitoError = err as CognitoError;
       let errorMessage = '登入失敗';
@@ -96,6 +107,48 @@ export const useCognito = () => {
       setLoading(false);
     }
   }, []);
+
+  // 完成新密碼設置
+  const completeNewPassword = useCallback(async (newPassword: string): Promise<{ success: boolean; session?: CognitoUserSession }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!currentCognitoUser) {
+        throw new Error('用戶會話已過期，請重新登入');
+      }
+
+      const session = await new Promise<CognitoUserSession>((resolve, reject) => {
+        // 過濾不需要的屬性，以避免 Cognito API 的錯誤
+        const filteredAttributes: any = {};
+        
+        currentCognitoUser.completeNewPasswordChallenge(newPassword, filteredAttributes, {
+          onSuccess: (session) => {
+            resolve(session);
+          },
+          onFailure: (err) => {
+            reject(err);
+          }
+        });
+      });
+
+      setNewPasswordRequired(false);
+      setCurrentCognitoUser(null);
+      setUserAttributes(null);
+      
+      showSuccess('密碼設置成功，請使用新密碼登入');
+      return { success: true, session };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      const errorMessage = cognitoError.message || '設置新密碼過程發生錯誤';
+      
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, [currentCognitoUser]);
 
   // 登出
   const signOut = useCallback(() => {
@@ -294,10 +347,12 @@ export const useCognito = () => {
     signUp,
     forgotPassword,
     confirmNewPassword,
+    completeNewPassword,
     getCurrentUser,
     getCurrentSession,
     getJwtToken,
     loading,
-    error
+    error,
+    newPasswordRequired
   };
 }; 

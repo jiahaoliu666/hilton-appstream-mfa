@@ -5,11 +5,13 @@ import { useCognito } from '@/lib/hooks/useCognito';
 type AuthContextType = {
   isAuthenticated: boolean;
   user: CognitoUser | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<{ success: boolean; newPasswordRequired?: boolean }>;
+  completeNewPassword: (newPassword: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
   error: string | null;
   getToken: () => Promise<string | null>;
+  newPasswordRequired: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,8 +36,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     getCurrentUser,
     getCurrentSession,
     getJwtToken,
+    completeNewPassword: cognitoCompleteNewPassword,
     loading: cognitoLoading,
-    error: cognitoError
+    error: cognitoError,
+    newPasswordRequired: cognitoNewPasswordRequired
   } = useCognito();
 
   // 保存令牌到 localStorage
@@ -90,13 +94,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [getCurrentUser, getCurrentSession]);
 
   // 登入函數
-  const handleLogin = async (username: string, password: string): Promise<boolean> => {
+  const handleLogin = async (username: string, password: string): Promise<{ success: boolean; newPasswordRequired?: boolean }> => {
     try {
-      const { success, session } = await signIn(username, password);
+      const result = await signIn(username, password);
       
-      if (success && session) {
+      if (result.newPasswordRequired) {
+        return { success: false, newPasswordRequired: true };
+      }
+      
+      if (result.success && result.session) {
         // 保存令牌
-        await saveTokenToStorage(session);
+        await saveTokenToStorage(result.session);
+        
+        setIsAuthenticated(true);
+        setUser(getCurrentUser());
+        return { success: true };
+      }
+      
+      return { success: false };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false };
+    }
+  };
+
+  // 完成新密碼設置函數
+  const handleCompleteNewPassword = async (newPassword: string): Promise<boolean> => {
+    try {
+      const result = await cognitoCompleteNewPassword(newPassword);
+      
+      if (result.success && result.session) {
+        // 保存令牌
+        await saveTokenToStorage(result.session);
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
@@ -105,7 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       return false;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Complete new password error:', error);
       return false;
     }
   };
@@ -144,10 +173,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         user,
         login: handleLogin,
+        completeNewPassword: handleCompleteNewPassword,
         logout: handleLogout,
         loading,
         error: cognitoError,
-        getToken: handleGetToken
+        getToken: handleGetToken,
+        newPasswordRequired: cognitoNewPasswordRequired
       }}
     >
       {children}
