@@ -84,11 +84,11 @@ export const useCognito = () => {
       // 處理常見的 Cognito 錯誤
       if (cognitoError.name === 'UserNotFoundException' || 
           cognitoError.message?.includes('User does not exist')) {
-        errorMessage = '查無此用戶，請向系統管理員註冊';
+        errorMessage = '請確認電子郵件或密碼是否正確';
       } else if (cognitoError.name === 'NotAuthorizedException' || 
                  cognitoError.message?.includes('Incorrect username or password')) {
         // Cognito出於安全考量，將未註冊用戶和密碼錯誤返回相同的錯誤代碼
-        errorMessage = '查無此用戶，或密碼不正確';
+        errorMessage = '請確認電子郵件或密碼是否正確';
       } else if (cognitoError.name === 'ResourceNotFoundException' || 
                  cognitoError.code === 'ResourceNotFoundException' ||
                  cognitoError.message?.includes('User pool client') && 
