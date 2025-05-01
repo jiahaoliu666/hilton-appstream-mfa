@@ -93,19 +93,13 @@ export default function ChangePassword() {
     e.preventDefault();
 
     if (!newPassword || !confirmNewPassword) {
-      showError('請輸入新密碼並確認');
+      showError('請檢查新密碼是否符合所有條件');
       return;
     }
 
-    if (newPassword !== confirmNewPassword) {
-      showError('兩次輸入的密碼不一致');
-      return;
-    }
-
-    // 檢查密碼是否符合要求
-    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar } = passwordChecks;
-    if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
-      showError('密碼不符合安全要求，請確保滿足所有密碼條件');
+    // 檢查密碼是否符合所有要求
+    if (!allConditionsMet) {
+      showError('請檢查密碼是否符合所有條件');
       return;
     }
 
@@ -437,18 +431,16 @@ export default function ChangePassword() {
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  backgroundColor: allConditionsMet ? '#1976d2' : '#cccccc',
+                  backgroundColor: '#1976d2',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
                   fontSize: '1rem',
                   fontWeight: 'bold',
-                  cursor: (loading || !allConditionsMet) ? 'not-allowed' : 'pointer',
-                  opacity: (loading || !allConditionsMet) ? 0.7 : 1,
-                  transition: 'background-color 0.3s, opacity 0.3s'
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1
                 }}
-                disabled={loading || !allConditionsMet}
-                title={!allConditionsMet ? "請確保滿足所有密碼條件" : ""}
+                disabled={loading}
               >
                 {loading ? '處理中...' : '設置新密碼'}
               </button>
