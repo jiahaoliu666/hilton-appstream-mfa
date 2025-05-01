@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
-import { showError, showInfo } from '@/lib/utils/notification';
+import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
 
 export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState('');
@@ -11,6 +11,7 @@ export default function ChangePassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   const { completeNewPassword, isAuthenticated, loading, error, newPasswordRequired, cancelNewPasswordChallenge } = useAuth();
+  const [loadingState, setLoading] = useState(false);
 
   // 密碼強度檢查
   const passwordChecks = useMemo(() => {
@@ -104,13 +105,27 @@ export default function ChangePassword() {
     }
 
     try {
+      setLoading(true); // 添加本地加載狀態
+      console.log('開始執行設置新密碼...');
+      
       const success = await completeNewPassword(newPassword);
       
       if (success) {
-        router.push('/');
+        console.log('密碼設置成功，準備重定向...');
+        showSuccess('密碼設置成功！');
+        
+        // 延遲一秒後跳轉，確保提示訊息能被看到
+        setTimeout(() => {
+          router.push('/');
+        }, 1000);
+      } else {
+        console.log('密碼設置返回失敗狀態，但沒有拋出錯誤');
       }
     } catch (err) {
-      console.error('Error completing new password:', err);
+      console.error('設置新密碼時發生未捕獲的錯誤:', err);
+      showError('設置新密碼時發生錯誤，請稍後再試');
+    } finally {
+      setLoading(false); // 確保無論結果如何都會解除加載狀態
     }
   };
 
@@ -183,7 +198,7 @@ export default function ChangePassword() {
                     border: '1px solid #ccc'
                   }}
                   placeholder="請輸入新密碼"
-                  disabled={loading}
+                  disabled={loadingState}
                 />
                 <button
                   type="button"
@@ -238,7 +253,7 @@ export default function ChangePassword() {
                     border: '1px solid #ccc'
                   }}
                   placeholder="請再次輸入新密碼"
-                  disabled={loading}
+                  disabled={loadingState}
                 />
                 <button
                   type="button"
@@ -437,12 +452,12 @@ export default function ChangePassword() {
                   borderRadius: '4px',
                   fontSize: '1rem',
                   fontWeight: 'bold',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1
+                  cursor: loadingState ? 'not-allowed' : 'pointer',
+                  opacity: loadingState ? 0.7 : 1
                 }}
-                disabled={loading}
+                disabled={loadingState}
               >
-                {loading ? '處理中...' : '設置新密碼'}
+                {loadingState ? '處理中...' : '設置新密碼'}
               </button>
 
               <button
@@ -457,10 +472,10 @@ export default function ChangePassword() {
                   borderRadius: '4px',
                   fontSize: '1rem',
                   fontWeight: 'bold',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1
+                  cursor: loadingState ? 'not-allowed' : 'pointer',
+                  opacity: loadingState ? 0.7 : 1
                 }}
-                disabled={loading}
+                disabled={loadingState}
               >
                 返回登入頁面
               </button>

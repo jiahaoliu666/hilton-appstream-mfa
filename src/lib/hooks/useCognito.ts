@@ -43,6 +43,9 @@ export const useCognito = () => {
     // 清除先前的標記
     if (typeof window !== 'undefined') {
       localStorage.removeItem('cognito_new_password_required');
+      localStorage.removeItem('cognito_username');
+      localStorage.removeItem('cognito_challenge_session');
+      localStorage.removeItem('cognito_auth_details');
     }
 
     try {
@@ -55,6 +58,18 @@ export const useCognito = () => {
         Username: username,
         Pool: userPool
       });
+
+      // 保存身份驗證詳情，用於後續恢復
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('cognito_auth_details', JSON.stringify({
+            username,
+            // 出於安全考慮，不存儲密碼
+          }));
+        } catch (e) {
+          console.error('無法保存身份驗證詳情', e);
+        }
+      }
 
       // 進行身份驗證
       const result = await new Promise<any>((resolve, reject) => {
@@ -75,6 +90,13 @@ export const useCognito = () => {
             if (typeof window !== 'undefined') {
               localStorage.setItem('cognito_new_password_required', 'true');
               localStorage.setItem('cognito_username', username);
+              localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於會話恢復
+              
+              // 保存挑戰名稱和會話狀態
+              localStorage.setItem('cognito_challenge_session', JSON.stringify({
+                challengeName: 'NEW_PASSWORD_REQUIRED',
+                authenticationFlowType: cognitoUser.getAuthenticationFlowType()
+              }));
             }
             
             resolve({ newPasswordRequired: true, userAttributes, requiredAttributes });
@@ -132,19 +154,83 @@ export const useCognito = () => {
     setError(null);
 
     try {
-      if (!currentCognitoUser) {
-        throw new Error('用戶會話已過期，請重新登入');
+      // 嘗試使用儲存的用戶信息和密碼重新進行身份驗證
+      // 這樣可以獲得一個有效的會話狀態
+      const username = localStorage.getItem('cognito_username');
+      const password = localStorage.getItem('cognito_password');
+      let userToComplete = currentCognitoUser;
+
+      if (!username || !userToComplete) {
+        throw new Error('會話已過期，請重新登入後再設置新密碼');
       }
 
+      // 如果需要重新認證，使用儲存的密碼和用戶名
+      if (!userToComplete.getSignInUserSession() && password) {
+        try {
+          console.log('嘗試重新進行身份驗證獲取新會話...');
+          
+          const authenticationDetails = new AuthenticationDetails({
+            Username: username,
+            Password: password
+          });
+
+          const newCognitoUser = new CognitoUser({
+            Username: username,
+            Pool: userPool
+          });
+
+          // 重新進行身份驗證，確保有新的有效會話
+          await new Promise<void>((resolve, reject) => {
+            newCognitoUser.authenticateUser(authenticationDetails, {
+              onSuccess: () => {
+                reject(new Error('用戶已經成功登入，不需要再設置新密碼'));
+              },
+              onFailure: (err) => {
+                reject(err);
+              },
+              newPasswordRequired: (userAttrs) => {
+                // 更新為新的用戶實例
+                userToComplete = newCognitoUser;
+                setCurrentCognitoUser(newCognitoUser);
+                resolve();
+              }
+            });
+          });
+        } catch (authError: any) {
+          console.error('重新認證失敗:', authError);
+          
+          if (authError.message === '用戶已經成功登入，不需要再設置新密碼') {
+            // 用戶可能在其他標籤頁已完成密碼設置，可以直接重定向到首頁
+            setNewPasswordRequired(false);
+            
+            // 清除需要新密碼的標記
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('cognito_new_password_required');
+              localStorage.removeItem('cognito_username');
+              localStorage.removeItem('cognito_password');
+              localStorage.removeItem('cognito_challenge_session');
+            }
+            
+            return { success: true };
+          }
+          
+          throw new Error('無法恢復會話，請重新登入: ' + authError.message);
+        }
+      }
+
+      // 設置新密碼
+      console.log('開始完成新密碼設置...');
       const session = await new Promise<CognitoUserSession>((resolve, reject) => {
         // 過濾不需要的屬性，以避免 Cognito API 的錯誤
         const filteredAttributes: any = {};
         
-        currentCognitoUser.completeNewPasswordChallenge(newPassword, filteredAttributes, {
+        userToComplete!.completeNewPasswordChallenge(newPassword, filteredAttributes, {
           onSuccess: (session) => {
+            console.log('新密碼設置成功');
             resolve(session);
           },
           onFailure: (err) => {
+            console.error('新密碼設置失敗:', err);
             reject(err);
           }
         });
@@ -154,17 +240,29 @@ export const useCognito = () => {
       setCurrentCognitoUser(null);
       setUserAttributes(null);
       
-      // 清除需要新密碼的標記
+      // 清除需要新密碼的標記，特別注意要清除密碼
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cognito_new_password_required');
         localStorage.removeItem('cognito_username');
+        localStorage.removeItem('cognito_password'); // 重要：清除密碼
+        localStorage.removeItem('cognito_challenge_session');
       }
       
-      showSuccess('密碼設置成功，請使用新密碼登入');
+      showSuccess('密碼設置成功，即將跳轉到首頁');
       return { success: true, session };
     } catch (err) {
       const cognitoError = err as CognitoError;
-      const errorMessage = cognitoError.message || '設置新密碼過程發生錯誤';
+      let errorMessage = '設置新密碼過程發生錯誤';
+      
+      if (cognitoError.message) {
+        if (cognitoError.message.includes('Invalid session')) {
+          errorMessage = '會話無效，請重新登入後再設置新密碼';
+        } else if (cognitoError.message.includes('Password does not conform')) {
+          errorMessage = '密碼不符合安全要求，請確保符合所有條件';
+        } else {
+          errorMessage = cognitoError.message;
+        }
+      }
       
       setError(errorMessage);
       showError(errorMessage);
@@ -184,6 +282,7 @@ export const useCognito = () => {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cognito_new_password_required');
         localStorage.removeItem('cognito_username');
+        localStorage.removeItem('cognito_challenge_session');
       }
       
       showSuccess('已成功登出');
@@ -201,6 +300,7 @@ export const useCognito = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('cognito_new_password_required');
       localStorage.removeItem('cognito_username');
+      localStorage.removeItem('cognito_challenge_session');
     }
   }, []);
 
@@ -397,6 +497,22 @@ export const useCognito = () => {
             Username: username,
             Pool: userPool
           });
+          
+          // 嘗試恢復挑戰會話狀態
+          const challengeSessionData = localStorage.getItem('cognito_challenge_session');
+          if (challengeSessionData) {
+            try {
+              const sessionInfo = JSON.parse(challengeSessionData);
+              if (sessionInfo.authenticationFlowType) {
+                cognitoUser.setAuthenticationFlowType(sessionInfo.authenticationFlowType);
+              }
+              // 設置挑戰名稱
+              cognitoUser.challengeName = 'NEW_PASSWORD_REQUIRED';
+            } catch (e) {
+              console.error('解析會話數據失敗:', e);
+            }
+          }
+          
           setCurrentCognitoUser(cognitoUser);
         }
         setNewPasswordRequired(true);
