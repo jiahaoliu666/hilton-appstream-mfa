@@ -23,8 +23,13 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     // 如果正在加載身份驗證狀態，不執行任何重定向
     if (loading) return;
 
+    // 檢查是否需要設置新密碼（從 localStorage 或狀態中獲取）
+    const isNewPasswordRequiredFromStorage = 
+      typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true';
+    const needsNewPassword = newPasswordRequired || isNewPasswordRequiredFromStorage;
+    
     // 處理首次登入需要設置新密碼的情況
-    if (newPasswordRequired) {
+    if (needsNewPassword) {
       // 如果需要設置新密碼，但不在設置密碼頁面，則重定向到設置密碼頁面
       if (!isChangePasswordPage) {
         router.push(changePasswordPath);
@@ -64,13 +69,18 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
+  // 檢查是否需要設置新密碼（從 localStorage 或狀態中獲取）
+  const isNewPasswordRequiredFromStorage = 
+    typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true';
+  const needsNewPassword = newPasswordRequired || isNewPasswordRequiredFromStorage;
+
   // 如果需要設置新密碼但不在設置密碼頁面，不顯示內容
-  if (newPasswordRequired && !isChangePasswordPage) {
+  if (needsNewPassword && !isChangePasswordPage) {
     return null;
   }
 
   // 如果不需要設置新密碼但在設置密碼頁面，不顯示內容
-  if (!newPasswordRequired && isChangePasswordPage) {
+  if (!needsNewPassword && isChangePasswordPage) {
     return null;
   }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   CognitoUserPool,
   CognitoUser,
@@ -24,7 +24,13 @@ type CognitoError = {
 export const useCognito = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [newPasswordRequired, setNewPasswordRequired] = useState<boolean>(false);
+  const [newPasswordRequired, setNewPasswordRequired] = useState<boolean>(() => {
+    // 檢查 localStorage 中是否有設置需要新密碼的標記
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cognito_new_password_required') === 'true';
+    }
+    return false;
+  });
   const [currentCognitoUser, setCurrentCognitoUser] = useState<CognitoUser | null>(null);
   const [userAttributes, setUserAttributes] = useState<any>(null);
 
@@ -33,6 +39,11 @@ export const useCognito = () => {
     setLoading(true);
     setError(null);
     setNewPasswordRequired(false);
+    
+    // 清除先前的標記
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_new_password_required');
+    }
 
     try {
       const authenticationDetails = new AuthenticationDetails({
@@ -59,6 +70,13 @@ export const useCognito = () => {
             setCurrentCognitoUser(cognitoUser);
             setUserAttributes(userAttributes);
             setNewPasswordRequired(true);
+            
+            // 在 localStorage 中保存需要新密碼的標記
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_new_password_required', 'true');
+              localStorage.setItem('cognito_username', username);
+            }
+            
             resolve({ newPasswordRequired: true, userAttributes, requiredAttributes });
           }
         });
@@ -136,6 +154,12 @@ export const useCognito = () => {
       setCurrentCognitoUser(null);
       setUserAttributes(null);
       
+      // 清除需要新密碼的標記
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cognito_new_password_required');
+        localStorage.removeItem('cognito_username');
+      }
+      
       showSuccess('密碼設置成功，請使用新密碼登入');
       return { success: true, session };
     } catch (err) {
@@ -155,6 +179,13 @@ export const useCognito = () => {
     const currentUser = userPool.getCurrentUser();
     if (currentUser) {
       currentUser.signOut();
+      
+      // 清除需要新密碼的標記
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cognito_new_password_required');
+        localStorage.removeItem('cognito_username');
+      }
+      
       showSuccess('已成功登出');
     }
   }, []);
@@ -339,6 +370,26 @@ export const useCognito = () => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // 在組件掛載時檢查用戶的身份驗證狀態
+  useEffect(() => {
+    const checkNewPasswordRequired = async () => {
+      if (typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true') {
+        // 如果有儲存的用戶名，嘗試恢復 CognitoUser 實例
+        const username = localStorage.getItem('cognito_username');
+        if (username) {
+          const cognitoUser = new CognitoUser({
+            Username: username,
+            Pool: userPool
+          });
+          setCurrentCognitoUser(cognitoUser);
+        }
+        setNewPasswordRequired(true);
+      }
+    };
+    
+    checkNewPasswordRequired();
   }, []);
 
   return {

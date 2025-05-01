@@ -13,15 +13,23 @@ export default function ChangePassword() {
   const { completeNewPassword, isAuthenticated, loading, error, newPasswordRequired } = useAuth();
 
   useEffect(() => {
-    // 如果用戶已經登入且不需要設置新密碼，重定向到首頁
-    if (isAuthenticated && !newPasswordRequired && !loading) {
+    // 檢查是否需要設置新密碼
+    const isNewPasswordRequiredFromStorage = localStorage.getItem('cognito_new_password_required') === 'true';
+    
+    // 如果頁面剛加載，等待 loading 完成
+    if (loading) return;
+    
+    // 如果用戶已經登入且不需要設置新密碼，也沒有儲存需要新密碼的標記，重定向到首頁
+    if (isAuthenticated && !newPasswordRequired && !isNewPasswordRequiredFromStorage && !loading) {
       router.push('/');
+      return;
     }
     
-    // 如果用戶未登入且不需要設置新密碼，重定向到登入頁面
-    if (!isAuthenticated && !newPasswordRequired && !loading) {
+    // 如果用戶未登入且不需要設置新密碼，也沒有儲存需要新密碼的標記，重定向到登入頁面
+    if (!isAuthenticated && !newPasswordRequired && !isNewPasswordRequiredFromStorage && !loading) {
       showInfo('請先登入');
       router.push('/login');
+      return;
     }
   }, [isAuthenticated, newPasswordRequired, router, loading]);
 

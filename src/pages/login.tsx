@@ -11,15 +11,25 @@ export default function Login() {
   const router = useRouter();
   const { login, isAuthenticated, loading, error, newPasswordRequired } = useAuth();
 
-  // 如果用戶已經登入，重定向到首頁
+  // 檢查是否有需要設置新密碼的標記
   useEffect(() => {
+    // 檢查 localStorage 中是否有設置新密碼的標記
+    const isNewPasswordRequiredFromStorage = 
+      typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true';
+    
+    // 如果正在加載，不執行任何重定向
+    if (loading) return;
+    
+    // 如果用戶已經登入，重定向到首頁
     if (isAuthenticated && !loading) {
       router.push('/');
+      return;
     }
     
     // 如果需要設置新密碼，重定向到設置密碼頁面
-    if (newPasswordRequired && !loading) {
+    if ((newPasswordRequired || isNewPasswordRequiredFromStorage) && !loading) {
       router.push('/change-password');
+      return;
     }
   }, [isAuthenticated, newPasswordRequired, router, loading]);
 
