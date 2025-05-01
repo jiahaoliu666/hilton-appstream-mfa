@@ -30,8 +30,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     
     // 處理首次登入需要設置新密碼的情況
     if (needsNewPassword) {
-      // 如果需要設置新密碼，但不在設置密碼頁面，則重定向到設置密碼頁面
-      if (!isChangePasswordPage) {
+      // 如果需要設置新密碼，但不在設置密碼頁面，也不是嘗試進入登入頁面，則重定向到設置密碼頁面
+      if (!isChangePasswordPage && !isPublicPage) {
         router.push(changePasswordPath);
         return;
       }

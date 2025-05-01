@@ -10,7 +10,7 @@ export default function ChangePassword() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const { completeNewPassword, isAuthenticated, loading, error, newPasswordRequired } = useAuth();
+  const { completeNewPassword, isAuthenticated, loading, error, newPasswordRequired, cancelNewPasswordChallenge } = useAuth();
 
   useEffect(() => {
     // 檢查是否需要設置新密碼
@@ -58,6 +58,9 @@ export default function ChangePassword() {
   };
 
   const handleCancel = () => {
+    // 使用 cancelNewPasswordChallenge 清除狀態和標記
+    cancelNewPasswordChallenge();
+    
     // 重定向到登入頁面，不執行任何密碼設置操作
     router.push('/login');
   };

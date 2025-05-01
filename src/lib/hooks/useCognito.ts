@@ -190,6 +190,20 @@ export const useCognito = () => {
     }
   }, []);
 
+  // 專門用於從 change-password 頁面取消並返回登入頁面
+  const cancelNewPasswordChallenge = useCallback(() => {
+    // 清除當前用戶狀態
+    setCurrentCognitoUser(null);
+    setUserAttributes(null);
+    setNewPasswordRequired(false);
+    
+    // 清除需要新密碼的標記
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_new_password_required');
+      localStorage.removeItem('cognito_username');
+    }
+  }, []);
+
   // 獲取當前會話
   const getCurrentSession = useCallback(async (): Promise<CognitoUserSession | null> => {
     const currentUser = userPool.getCurrentUser();
@@ -404,6 +418,7 @@ export const useCognito = () => {
     getJwtToken,
     loading,
     error,
-    newPasswordRequired
+    newPasswordRequired,
+    cancelNewPasswordChallenge
   };
 }; 

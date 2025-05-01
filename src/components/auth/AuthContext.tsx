@@ -12,6 +12,7 @@ type AuthContextType = {
   error: string | null;
   getToken: () => Promise<string | null>;
   newPasswordRequired: boolean;
+  cancelNewPasswordChallenge: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,7 +40,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     completeNewPassword: cognitoCompleteNewPassword,
     loading: cognitoLoading,
     error: cognitoError,
-    newPasswordRequired: cognitoNewPasswordRequired
+    newPasswordRequired: cognitoNewPasswordRequired,
+    cancelNewPasswordChallenge: cognitoCancelNewPasswordChallenge
   } = useCognito();
 
   // 保存令牌到 localStorage
@@ -178,7 +180,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading,
         error: cognitoError,
         getToken: handleGetToken,
-        newPasswordRequired: cognitoNewPasswordRequired
+        newPasswordRequired: cognitoNewPasswordRequired,
+        cancelNewPasswordChallenge: cognitoCancelNewPasswordChallenge
       }}
     >
       {children}
