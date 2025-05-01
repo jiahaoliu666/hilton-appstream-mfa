@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
@@ -11,6 +11,62 @@ export default function ChangePassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   const { completeNewPassword, isAuthenticated, loading, error, newPasswordRequired, cancelNewPasswordChallenge } = useAuth();
+
+  // 密碼強度檢查
+  const passwordChecks = useMemo(() => {
+    const hasMinLength = newPassword.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    const hasLowerCase = /[a-z]/.test(newPassword);
+    const hasNumbers = /\d/.test(newPassword);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+    const passwordsMatch = newPassword === confirmNewPassword && confirmNewPassword.length > 0;
+
+    return {
+      hasMinLength,
+      hasUpperCase,
+      hasLowerCase,
+      hasNumbers,
+      hasSpecialChar,
+      passwordsMatch
+    };
+  }, [newPassword, confirmNewPassword]);
+
+  // 檢查所有密碼條件是否都滿足
+  const allConditionsMet = useMemo(() => {
+    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar, passwordsMatch } = passwordChecks;
+    return hasMinLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && passwordsMatch;
+  }, [passwordChecks]);
+
+  // 計算密碼強度
+  const passwordStrength = useMemo(() => {
+    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar } = passwordChecks;
+    
+    let score = 0;
+    if (hasMinLength) score += 1;
+    if (hasUpperCase) score += 1;
+    if (hasLowerCase) score += 1;
+    if (hasNumbers) score += 1;
+    if (hasSpecialChar) score += 1;
+    
+    if (newPassword.length > 12) score += 1;
+    
+    // 最低分數為0，最高分數為6
+    return {
+      score,
+      percent: (score / 6) * 100,
+      text: score === 0 ? '非常弱' : 
+            score === 1 ? '弱' : 
+            score === 2 ? '弱' : 
+            score === 3 ? '中等' : 
+            score === 4 ? '強' : 
+            score === 5 ? '很強' : '非常強',
+      color: score === 0 || score === 1 ? '#ff4d4f' : 
+             score === 2 ? '#faad14' : 
+             score === 3 ? '#faad14' : 
+             score === 4 ? '#52c41a' : 
+             score === 5 ? '#52c41a' : '#389e0d'
+    };
+  }, [passwordChecks, newPassword]);
 
   useEffect(() => {
     // 檢查是否需要設置新密碼
@@ -43,6 +99,13 @@ export default function ChangePassword() {
 
     if (newPassword !== confirmNewPassword) {
       showError('兩次輸入的密碼不一致');
+      return;
+    }
+
+    // 檢查密碼是否符合要求
+    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar } = passwordChecks;
+    if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
+      showError('密碼不符合安全要求，請確保滿足所有密碼條件');
       return;
     }
 
@@ -154,9 +217,6 @@ export default function ChangePassword() {
                   )}
                 </button>
               </div>
-              <small style={{ display: 'block', marginTop: '0.25rem', color: '#666' }}>
-                密碼應包含至少8個字符，包括大小寫字母、數字和特殊符號
-              </small>
             </div>
             
             <div style={{ marginBottom: '1.5rem' }}>
@@ -214,6 +274,159 @@ export default function ChangePassword() {
               </div>
             </div>
             
+            {/* 密碼強度檢查與視覺反饋功能移到確認新密碼欄位下方 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              {/* 密碼強度指示器 */}
+              {newPassword.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span>密碼強度：</span>
+                    <span style={{ color: passwordStrength.color, fontWeight: 'bold' }}>{passwordStrength.text}</span>
+                  </div>
+                  <div style={{ 
+                    width: '100%', 
+                    height: '6px', 
+                    backgroundColor: '#e9e9e9', 
+                    borderRadius: '3px', 
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ 
+                      width: `${passwordStrength.percent}%`, 
+                      height: '100%', 
+                      backgroundColor: passwordStrength.color,
+                      transition: 'width 0.3s ease-in-out'
+                    }}></div>
+                  </div>
+                </div>
+              )}
+              
+              {/* 密碼要求檢查列表 */}
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>密碼必須符合以下條件：</div>
+                <ul style={{ 
+                  listStyleType: 'none', 
+                  padding: '0', 
+                  margin: '0', 
+                  fontSize: '0.875rem' 
+                }}>
+                  <li style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    marginBottom: '0.25rem',
+                    color: passwordChecks.hasMinLength ? '#52c41a' : '#8c8c8c'
+                  }}>
+                    <span style={{ marginRight: '0.5rem' }}>
+                      {passwordChecks.hasMinLength ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                      )}
+                    </span>
+                    至少 8 個字符
+                  </li>
+                  <li style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    marginBottom: '0.25rem',
+                    color: passwordChecks.hasUpperCase ? '#52c41a' : '#8c8c8c'
+                  }}>
+                    <span style={{ marginRight: '0.5rem' }}>
+                      {passwordChecks.hasUpperCase ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                      )}
+                    </span>
+                    至少一個大寫字母 (A-Z)
+                  </li>
+                  <li style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    marginBottom: '0.25rem',
+                    color: passwordChecks.hasLowerCase ? '#52c41a' : '#8c8c8c'
+                  }}>
+                    <span style={{ marginRight: '0.5rem' }}>
+                      {passwordChecks.hasLowerCase ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                      )}
+                    </span>
+                    至少一個小寫字母 (a-z)
+                  </li>
+                  <li style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    marginBottom: '0.25rem',
+                    color: passwordChecks.hasNumbers ? '#52c41a' : '#8c8c8c'
+                  }}>
+                    <span style={{ marginRight: '0.5rem' }}>
+                      {passwordChecks.hasNumbers ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                      )}
+                    </span>
+                    至少一個數字 (0-9)
+                  </li>
+                  <li style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    marginBottom: '0.25rem',
+                    color: passwordChecks.hasSpecialChar ? '#52c41a' : '#8c8c8c'
+                  }}>
+                    <span style={{ marginRight: '0.5rem' }}>
+                      {passwordChecks.hasSpecialChar ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                      )}
+                    </span>
+                    至少一個特殊字符 (!@#$%^&*等)
+                  </li>
+                  {/* 新增密碼一致性檢查 */}
+                  <li style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    color: passwordChecks.passwordsMatch ? '#52c41a' : '#8c8c8c'
+                  }}>
+                    <span style={{ marginRight: '0.5rem' }}>
+                      {passwordChecks.passwordsMatch ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                      )}
+                    </span>
+                    兩次輸入的密碼一致
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
             <div style={{ 
               display: 'flex',
               flexDirection: 'column',
@@ -224,16 +437,18 @@ export default function ChangePassword() {
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  backgroundColor: '#1976d2',
+                  backgroundColor: allConditionsMet ? '#1976d2' : '#cccccc',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
                   fontSize: '1rem',
                   fontWeight: 'bold',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1
+                  cursor: (loading || !allConditionsMet) ? 'not-allowed' : 'pointer',
+                  opacity: (loading || !allConditionsMet) ? 0.7 : 1,
+                  transition: 'background-color 0.3s, opacity 0.3s'
                 }}
-                disabled={loading}
+                disabled={loading || !allConditionsMet}
+                title={!allConditionsMet ? "請確保滿足所有密碼條件" : ""}
               >
                 {loading ? '處理中...' : '設置新密碼'}
               </button>
