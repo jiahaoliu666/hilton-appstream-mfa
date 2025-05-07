@@ -118,15 +118,20 @@ export default function Login() {
   const renderLoginForm = () => (
     <form onSubmit={handleLogin}>
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '0.5rem', 
-          fontWeight: 'bold' 
-        }}>
+        <label 
+          htmlFor="username"
+          style={{ 
+            display: 'block', 
+            marginBottom: '0.5rem', 
+            fontWeight: 'bold' 
+          }}
+        >
           電子郵件
         </label>
         <input
           type="text"
+          id="username"
+          name="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           style={{
@@ -141,11 +146,14 @@ export default function Login() {
       </div>
       
       <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '0.5rem', 
-          fontWeight: 'bold' 
-        }}>
+        <label 
+          htmlFor="password"
+          style={{ 
+            display: 'block', 
+            marginBottom: '0.5rem', 
+            fontWeight: 'bold' 
+          }}
+        >
           密碼
         </label>
         <div style={{ 
@@ -155,6 +163,8 @@ export default function Login() {
         }}>
           <input
             type={showPassword ? "text" : "password"}
+            id="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{
@@ -257,15 +267,20 @@ export default function Login() {
       {(mfaType === 'SMS_MFA' || mfaType === 'SOFTWARE_TOKEN_MFA') && (
         <>
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '0.5rem', 
-              fontWeight: 'bold' 
-            }}>
+            <label 
+              htmlFor="mfaCode"
+              style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem', 
+                fontWeight: 'bold' 
+              }}
+            >
               {mfaType === 'SMS_MFA' ? '簡訊驗證碼' : '驗證器驗證碼'}
             </label>
             <input
               type="text"
+              id="mfaCode"
+              name="mfaCode"
               value={mfaCode}
               onChange={(e) => setMfaCode(e.target.value)}
               style={{

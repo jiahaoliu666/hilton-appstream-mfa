@@ -96,7 +96,6 @@ export default function ChangePassword() {
     
     // 如果用戶未登入且不需要設置新密碼，也沒有儲存需要新密碼的標記，重定向到登入頁面
     if (!isAuthenticated && !newPasswordRequired && !isNewPasswordRequiredFromStorage && !loading) {
-      showInfo('請先登入');
       router.push('/login');
       return;
     }
@@ -215,6 +214,8 @@ export default function ChangePassword() {
                   type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  id="newPassword"
+                  name="newPassword"
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -270,6 +271,8 @@ export default function ChangePassword() {
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  id="confirmNewPassword"
+                  name="confirmNewPassword"
                   style={{
                     width: '100%',
                     padding: '0.75rem',

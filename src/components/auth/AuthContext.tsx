@@ -184,6 +184,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     availableMfaTypes?: any[];
   }> => {
     try {
+      // 在開始新的登入前，清除可能存在的設置狀態，避免狀態不一致
+      if (typeof window !== 'undefined') {
+        // 除非明確需要設置新密碼，否則清除相關標記
+        if (!cognitoNewPasswordRequired) {
+          localStorage.removeItem('cognito_new_password_required');
+        }
+        // 清除潛在的衝突狀態
+        if (!isFirstLogin) {
+          localStorage.removeItem('cognito_first_login');
+          localStorage.removeItem('cognito_setup_step');
+        }
+      }
+
       const result = await signIn(username, password);
       
       if (result.mfaRequired) {
@@ -203,6 +216,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (typeof window !== 'undefined') {
           localStorage.setItem('cognito_first_login', 'true');
           localStorage.setItem('cognito_setup_step', 'password');
+          // 明確設置需要新密碼的標記
+          localStorage.setItem('cognito_new_password_required', 'true');
         }
         return { success: false, newPasswordRequired: true };
       }
@@ -214,11 +229,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         setUser(getCurrentUser());
         
-        // 檢查是否需要啟用MFA
+        // 檢查是否是首次登入流程，如果是，且已完成密碼設置，更新到MFA階段
         if (isFirstLogin && currentSetupStep === 'password') {
           setCurrentSetupStep('mfa');
           if (typeof window !== 'undefined') {
             localStorage.setItem('cognito_setup_step', 'mfa');
+            // 清除需要新密碼的標記，因為密碼已設置
+            localStorage.removeItem('cognito_new_password_required');
           }
         }
         
@@ -374,6 +391,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
+        
+        // 清除需要新密碼的標記
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cognito_new_password_required');
+        }
         
         // 如果是首次登入流程，且設置了新密碼，更新進度到MFA設置階段
         if (isFirstLogin && currentSetupStep === 'password') {

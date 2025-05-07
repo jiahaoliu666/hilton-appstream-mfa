@@ -50,7 +50,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     if (isFirstLogin) {
       // 如果處於 password 階段但不在密碼設置頁面，重定向到密碼設置頁面
       if (currentSetupStep === 'password' && !isChangePasswordPage) {
-        router.push(changePasswordPath);
+        // 防止在登入頁面和密碼設置頁面間循環跳轉
+        if (router.pathname !== mfaPath) {
+          router.push(changePasswordPath);
+        }
         return;
       }
       
