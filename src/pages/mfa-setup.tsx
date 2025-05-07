@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
 import { showError, showSuccess } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
+import SetupProgressIndicator from '@/components/common/SetupProgressIndicator';
 
 export default function MfaSetup() {
   const [step, setStep] = useState<'options' | 'setup-totp' | 'verify-totp'>('options');
@@ -29,7 +30,11 @@ export default function MfaSetup() {
     setupSmsMfa,
     disableMfa,
     mfaSecret,
-    mfaSecretQRCode
+    mfaSecretQRCode,
+    // 安全設置進度相關
+    isFirstLogin,
+    currentSetupStep,
+    completeSetup
   } = useAuth();
 
   // 在組件掛載時檢查 MFA 設置
@@ -110,6 +115,16 @@ export default function MfaSetup() {
         }
         
         setStep('options');
+        
+        // 如果是首次登入流程，完成設置
+        if (isFirstLogin && currentSetupStep === 'mfa') {
+          completeSetup();
+          
+          // 延遲一秒後跳轉到首頁
+          setTimeout(() => {
+            router.push('/');
+          }, 1000);
+        }
       } else {
         showError('驗證失敗，請確保輸入了正確的驗證碼');
       }
@@ -138,6 +153,16 @@ export default function MfaSetup() {
             preferredMfa: result.preferredMfa,
             mfaOptions: result.mfaOptions || []
           });
+        }
+        
+        // 如果是首次登入流程，完成設置
+        if (isFirstLogin && currentSetupStep === 'mfa') {
+          completeSetup();
+          
+          // 延遲一秒後跳轉到首頁
+          setTimeout(() => {
+            router.push('/');
+          }, 1000);
         }
       } else {
         showError('設置 SMS MFA 失敗，請確保您的帳戶已關聯手機號碼');
@@ -188,10 +213,31 @@ export default function MfaSetup() {
     router.push('/');
   };
 
+  // 跳過 MFA 設置 (僅限首次登入流程)
+  const handleSkipMfaSetup = () => {
+    if (window.confirm('確定要跳過 MFA 設置嗎？這將降低您帳戶的安全性。')) {
+      // 完成設置流程
+      if (isFirstLogin && currentSetupStep === 'mfa') {
+        completeSetup();
+      }
+      
+      // 跳轉到首頁
+      router.push('/');
+    }
+  };
+
   // 渲染 MFA 選項頁面
   const renderOptionsPage = () => (
     <div>
       <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>多因素認證 (MFA) 設置</h1>
+      
+      {/* 只有在首次登入時才顯示進度指示器 */}
+      {isFirstLogin && (
+        <SetupProgressIndicator 
+          currentStep="mfa" 
+          isMfaRequired={true} 
+        />
+      )}
       
       <div style={{ marginBottom: '2rem' }}>
         <p style={{ marginBottom: '1rem' }}>
@@ -310,24 +356,49 @@ export default function MfaSetup() {
         </div>
       </div>
       
-      <button
-        type="button"
-        onClick={handleGoBack}
-        style={{
-          width: '100%',
-          padding: '0.75rem',
-          backgroundColor: '#f5f5f5',
-          color: '#666',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          fontSize: '1rem',
-          fontWeight: 'bold'
-        }}
-        disabled={loading}
-      >
-        返回
-      </button>
+      <div style={{ display: 'flex', gap: '1rem' }}>
+        <button
+          type="button"
+          onClick={handleGoBack}
+          style={{
+            flex: isFirstLogin ? '1' : 'auto',
+            width: isFirstLogin ? 'auto' : '100%',
+            padding: '0.75rem',
+            backgroundColor: '#f5f5f5',
+            color: '#666',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+          disabled={loading}
+        >
+          返回
+        </button>
+        
+        {/* 只有在首次登入流程中才顯示跳過按鈕 */}
+        {isFirstLogin && currentSetupStep === 'mfa' && (
+          <button
+            type="button"
+            onClick={handleSkipMfaSetup}
+            style={{
+              flex: '1',
+              padding: '0.75rem',
+              backgroundColor: '#f5f5f5',
+              color: '#666',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: '1rem',
+              fontWeight: 'bold'
+            }}
+            disabled={loading}
+          >
+            跳過 MFA 設置
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -335,6 +406,14 @@ export default function MfaSetup() {
   const renderTotpSetupPage = () => (
     <div>
       <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>設置驗證器應用</h1>
+      
+      {/* 只有在首次登入時才顯示進度指示器 */}
+      {isFirstLogin && (
+        <SetupProgressIndicator 
+          currentStep="mfa" 
+          isMfaRequired={true} 
+        />
+      )}
       
       <div style={{ marginBottom: '2rem' }}>
         <p style={{ marginBottom: '1rem' }}>

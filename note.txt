@@ -20,6 +20,7 @@ hilton-appstream-mfa/
 │   │   ├── index.tsx                # 首頁
 │   │   └── login.tsx                # 登入頁面
 │   │   └── change-password.tsx      # 更改密碼頁面
+│   │   └── mfa-setup.tsx            # MFA 設定頁面
 │   └── styles/
 │       └── globals.css              # 全局樣式
 

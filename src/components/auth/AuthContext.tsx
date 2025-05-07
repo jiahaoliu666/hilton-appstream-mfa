@@ -3,6 +3,7 @@ import { CognitoUser, CognitoUserSession } from 'amazon-cognito-identity-js';
 import { useCognito, MFAType } from '@/lib/hooks/useCognito';
 import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
 import { useRouter } from 'next/router';
+import { SetupStep } from '@/components/common/SetupProgressIndicator';
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -42,6 +43,14 @@ type AuthContextType = {
   disableMfa: () => Promise<boolean>;
   mfaSecret: string;
   mfaSecretQRCode: string;
+  // 安全設置進度指示相關
+  isFirstLogin: boolean;
+  setIsFirstLogin: (isFirst: boolean) => void;
+  currentSetupStep: SetupStep;
+  setCurrentSetupStep: (step: SetupStep) => void;
+  isMfaSetupRequired: boolean;
+  setIsMfaSetupRequired: (required: boolean) => void;
+  completeSetup: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,6 +68,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<CognitoUser | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  // 首次登入與安全設置進度相關狀態
+  const [isFirstLogin, setIsFirstLogin] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cognito_first_login') === 'true';
+    }
+    return false;
+  });
+  const [currentSetupStep, setCurrentSetupStep] = useState<SetupStep>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('cognito_setup_step') as SetupStep) || 'password';
+    }
+    return 'password';
+  });
+  const [isMfaSetupRequired, setIsMfaSetupRequired] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cognito_mfa_setup_required') !== 'false';
+    }
+    return true; // 預設值為true，表示需要設置MFA
+  });
   
   const {
     signIn,
@@ -86,6 +114,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   } = useCognito();
 
   const router = useRouter();
+
+  // 更新安全設置進度
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cognito_first_login', isFirstLogin.toString());
+      localStorage.setItem('cognito_setup_step', currentSetupStep);
+      localStorage.setItem('cognito_mfa_setup_required', isMfaSetupRequired.toString());
+    }
+  }, [isFirstLogin, currentSetupStep, isMfaSetupRequired]);
 
   // 保存令牌到 localStorage
   const saveTokenToStorage = async (session: CognitoUserSession) => {
@@ -160,6 +197,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (result.newPasswordRequired) {
+        // 標記為首次登入，需要設置新密碼
+        setIsFirstLogin(true);
+        setCurrentSetupStep('password');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cognito_first_login', 'true');
+          localStorage.setItem('cognito_setup_step', 'password');
+        }
         return { success: false, newPasswordRequired: true };
       }
       
@@ -169,6 +213,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
+        
+        // 檢查是否需要啟用MFA
+        if (isFirstLogin && currentSetupStep === 'password') {
+          setCurrentSetupStep('mfa');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cognito_setup_step', 'mfa');
+          }
+        }
+        
         return { success: true };
       }
       
@@ -176,6 +229,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Login error:', error);
       return { success: false };
+    }
+  };
+
+  // 完成安全設置流程
+  const completeSetup = () => {
+    setIsFirstLogin(false);
+    setCurrentSetupStep('complete');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cognito_first_login', 'false');
+      localStorage.setItem('cognito_setup_step', 'complete');
     }
   };
 
@@ -190,6 +253,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
+        
+        // 如果是首次登入流程，且已完成MFA設置
+        if (isFirstLogin && currentSetupStep === 'mfa') {
+          completeSetup();
+        }
+        
         return true;
       }
       
@@ -211,6 +280,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
+        
+        // 如果是首次登入流程，且已完成MFA設置
+        if (isFirstLogin && currentSetupStep === 'mfa') {
+          completeSetup();
+        }
+        
         return true;
       }
       
@@ -245,6 +320,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const handleVerifyAndEnableTotpMfa = async (totpCode: string, deviceName?: string): Promise<boolean> => {
     try {
       const result = await cognitoVerifyAndEnableTotpMfa(totpCode, deviceName);
+      
+      // 如果是首次登入流程，且已完成MFA設置
+      if (result.success && isFirstLogin && currentSetupStep === 'mfa') {
+        completeSetup();
+      }
+      
       return result.success;
     } catch (error) {
       console.error('Verify and enable TOTP MFA error:', error);
@@ -256,6 +337,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const handleSetupSmsMfa = async (): Promise<boolean> => {
     try {
       const result = await cognitoSetupSmsMfa();
+      
+      // 如果是首次登入流程，且已完成MFA設置
+      if (result.success && isFirstLogin && currentSetupStep === 'mfa') {
+        completeSetup();
+      }
+      
       return result.success;
     } catch (error) {
       console.error('Setup SMS MFA error:', error);
@@ -287,6 +374,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
+        
+        // 如果是首次登入流程，且設置了新密碼，更新進度到MFA設置階段
+        if (isFirstLogin && currentSetupStep === 'password') {
+          if (isMfaSetupRequired) {
+            setCurrentSetupStep('mfa');
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_setup_step', 'mfa');
+            }
+          } else {
+            completeSetup();
+          }
+        }
+        
         return true;
       }
       
@@ -334,6 +434,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clearTokenFromStorage();
     setIsAuthenticated(false);
     setUser(null);
+    
+    // 清除首次登入狀態
+    setIsFirstLogin(false);
+    setCurrentSetupStep('password');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_first_login');
+      localStorage.removeItem('cognito_setup_step');
+    }
   };
 
   // 獲取 JWT 令牌函數
@@ -380,7 +488,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setupSmsMfa: handleSetupSmsMfa,
         disableMfa: handleDisableMfa,
         mfaSecret: cognitoMfaSecret,
-        mfaSecretQRCode: cognitoMfaSecretQRCode
+        mfaSecretQRCode: cognitoMfaSecretQRCode,
+        // 安全設置進度相關
+        isFirstLogin,
+        setIsFirstLogin,
+        currentSetupStep,
+        setCurrentSetupStep,
+        isMfaSetupRequired,
+        setIsMfaSetupRequired,
+        completeSetup
       }}
     >
       {children}

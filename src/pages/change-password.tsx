@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
 import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
+import SetupProgressIndicator from '@/components/common/SetupProgressIndicator';
 
 export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState('');
@@ -10,7 +11,18 @@ export default function ChangePassword() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const { completeNewPassword, isAuthenticated, loading, error, newPasswordRequired, cancelNewPasswordChallenge } = useAuth();
+  const { 
+    completeNewPassword, 
+    isAuthenticated, 
+    loading, 
+    error, 
+    newPasswordRequired, 
+    cancelNewPasswordChallenge,
+    // 安全設置進度相關
+    isFirstLogin,
+    currentSetupStep,
+    isMfaSetupRequired
+  } = useAuth();
   const [loadingState, setLoading] = useState(false);
 
   // 密碼強度檢查
@@ -114,10 +126,18 @@ export default function ChangePassword() {
         console.log('密碼設置成功，準備重定向...');
         showSuccess('密碼設置成功！');
         
-        // 延遲一秒後跳轉，確保提示訊息能被看到
-        setTimeout(() => {
-          router.push('/');
-        }, 1000);
+        // 檢查是否是首次登入流程，如果是，且需要設置MFA，則跳轉到MFA設置頁面
+        if (isFirstLogin && isMfaSetupRequired) {
+          // 延遲一秒後跳轉，確保提示訊息能被看到
+          setTimeout(() => {
+            router.push('/mfa-setup');
+          }, 1000);
+        } else {
+          // 否則直接跳轉到首頁
+          setTimeout(() => {
+            router.push('/');
+          }, 1000);
+        }
       } else {
         console.log('密碼設置返回失敗狀態，但沒有拋出錯誤');
       }
@@ -168,9 +188,14 @@ export default function ChangePassword() {
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
           <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>設置新密碼</h1>
-          <p style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-            首次登入需要設置新密碼，請設置一個安全的密碼以繼續使用本系統
-          </p>
+          
+          {/* 只有在首次登入時才顯示進度指示器 */}
+          {isFirstLogin && (
+            <SetupProgressIndicator 
+              currentStep="password" 
+              isMfaRequired={isMfaSetupRequired} 
+            />
+          )}
           
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '1rem' }}>
