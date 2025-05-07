@@ -4,7 +4,8 @@ import {
   CognitoUser,
   AuthenticationDetails,
   CognitoUserSession,
-  CognitoUserAttribute
+  CognitoUserAttribute,
+  MFAOption
 } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
 import { showError, showSuccess, mapCognitoErrorToMessage } from '@/lib/utils/notification';
@@ -21,6 +22,9 @@ type CognitoError = {
   message: string;
 };
 
+// MFA 類型
+export type MFAType = 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA' | 'SELECT_MFA_TYPE' | 'NOMFA';
+
 export const useCognito = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +37,37 @@ export const useCognito = () => {
   });
   const [currentCognitoUser, setCurrentCognitoUser] = useState<CognitoUser | null>(null);
   const [userAttributes, setUserAttributes] = useState<any>(null);
+  const [mfaType, setMfaType] = useState<MFAType>('NOMFA');
+  const [mfaRequired, setMfaRequired] = useState<boolean>(false);
+  const [mfaSecret, setMfaSecret] = useState<string>('');
+  const [mfaSecretQRCode, setMfaSecretQRCode] = useState<string>('');
+
+  // 清除 MFA 相關狀態
+  const clearMfaState = useCallback(() => {
+    setMfaType('NOMFA');
+    setMfaRequired(false);
+    setMfaSecret('');
+    setMfaSecretQRCode('');
+    
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_mfa_required');
+      localStorage.removeItem('cognito_mfa_type');
+    }
+  }, []);
 
   // 登入
-  const signIn = useCallback(async (username: string, password: string): Promise<{ success: boolean; session?: CognitoUserSession; newPasswordRequired?: boolean }> => {
+  const signIn = useCallback(async (username: string, password: string): Promise<{ 
+    success: boolean; 
+    session?: CognitoUserSession; 
+    newPasswordRequired?: boolean;
+    mfaRequired?: boolean;
+    mfaType?: MFAType;
+    availableMfaTypes?: any[];
+  }> => {
     setLoading(true);
     setError(null);
     setNewPasswordRequired(false);
+    clearMfaState();
     
     // 清除先前的標記
     if (typeof window !== 'undefined') {
@@ -66,30 +95,31 @@ export const useCognito = () => {
             username,
             // 出於安全考慮，不存儲密碼
           }));
+          localStorage.setItem('cognito_username', username);
         } catch (e) {
           console.error('無法保存身份驗證詳情', e);
         }
       }
 
+      setCurrentCognitoUser(cognitoUser);
+
       // 進行身份驗證
       const result = await new Promise<any>((resolve, reject) => {
         cognitoUser.authenticateUser(authenticationDetails, {
           onSuccess: (session) => {
-            resolve({ session, newPasswordRequired: false });
+            resolve({ session, newPasswordRequired: false, mfaRequired: false });
           },
           onFailure: (err) => {
             reject(err);
           },
           newPasswordRequired: (userAttributes, requiredAttributes) => {
             // 處理首次登入需要更改密碼的情況
-            setCurrentCognitoUser(cognitoUser);
             setUserAttributes(userAttributes);
             setNewPasswordRequired(true);
             
             // 在 localStorage 中保存需要新密碼的標記
             if (typeof window !== 'undefined') {
               localStorage.setItem('cognito_new_password_required', 'true');
-              localStorage.setItem('cognito_username', username);
               localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於會話恢復
               
               // 保存挑戰名稱和會話狀態
@@ -100,12 +130,67 @@ export const useCognito = () => {
             }
             
             resolve({ newPasswordRequired: true, userAttributes, requiredAttributes });
+          },
+          mfaRequired: (challengeName, challengeParameters) => {
+            // 處理 SMS MFA 挑戰
+            console.log('SMS MFA 挑戰', challengeName);
+            setMfaType('SMS_MFA');
+            setMfaRequired(true);
+            
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_mfa_required', 'true');
+              localStorage.setItem('cognito_mfa_type', 'SMS_MFA');
+              localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於 MFA 失敗後重試
+            }
+            
+            resolve({ mfaRequired: true, mfaType: 'SMS_MFA' });
+          },
+          totpRequired: (challengeName, challengeParameters) => {
+            // 處理 TOTP MFA 挑戰
+            console.log('TOTP MFA 挑戰', challengeName);
+            setMfaType('SOFTWARE_TOKEN_MFA');
+            setMfaRequired(true);
+            
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_mfa_required', 'true');
+              localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
+              localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於 MFA 失敗後重試
+            }
+            
+            resolve({ mfaRequired: true, mfaType: 'SOFTWARE_TOKEN_MFA' });
+          },
+          selectMFAType: (challengeName, challengeParameters) => {
+            // 處理需要選擇 MFA 類型的情況
+            console.log('需要選擇 MFA 類型', challengeName);
+            setMfaType('SELECT_MFA_TYPE');
+            setMfaRequired(true);
+            
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_mfa_required', 'true');
+              localStorage.setItem('cognito_mfa_type', 'SELECT_MFA_TYPE');
+              localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於 MFA 失敗後重試
+            }
+            
+            resolve({ 
+              mfaRequired: true, 
+              mfaType: 'SELECT_MFA_TYPE',
+              availableMfaTypes: challengeParameters.mfaOptions || [] 
+            });
           }
         });
       });
 
       if (result.newPasswordRequired) {
         return { success: false, newPasswordRequired: true };
+      }
+
+      if (result.mfaRequired) {
+        return { 
+          success: false, 
+          mfaRequired: true, 
+          mfaType: result.mfaType,
+          availableMfaTypes: result.availableMfaTypes
+        };
       }
 
       showSuccess('登入成功');
@@ -146,7 +231,128 @@ export const useCognito = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clearMfaState]);
+
+  // 驗證 MFA 碼
+  const verifyMfaCode = useCallback(async (mfaCode: string, mfaType?: MFAType): Promise<{
+    success: boolean;
+    session?: CognitoUserSession;
+  }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = currentCognitoUser;
+      if (!user) {
+        throw new Error('用戶會話已失效，請重新登入');
+      }
+
+      const selectedMfaType = mfaType || (typeof window !== 'undefined' ? 
+        localStorage.getItem('cognito_mfa_type') as MFAType || 'SMS_MFA' : 'SMS_MFA');
+
+      const session = await new Promise<CognitoUserSession>((resolve, reject) => {
+        user.sendMFACode(mfaCode, {
+          onSuccess: (session) => {
+            resolve(session);
+          },
+          onFailure: (err) => {
+            reject(err);
+          }
+        }, selectedMfaType);
+      });
+
+      // 清除 MFA 相關狀態和臨時密碼
+      clearMfaState();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cognito_password');
+      }
+
+      showSuccess('驗證成功');
+      return { success: true, session };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      let errorMessage = '驗證碼錯誤或已過期';
+
+      if (cognitoError.name === 'NotAuthorizedException') {
+        errorMessage = '驗證碼錯誤或已過期';
+      } else if (cognitoError.name === 'CodeMismatchException') {
+        errorMessage = '驗證碼不匹配，請重新輸入';
+      } else {
+        errorMessage = cognitoError.message || '驗證過程發生錯誤';
+      }
+
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, [currentCognitoUser, clearMfaState]);
+
+  // 選擇 MFA 類型 (當用戶有多種 MFA 選項時)
+  const selectMfaType = useCallback(async (mfaType: MFAType): Promise<{
+    success: boolean;
+    session?: CognitoUserSession;
+  }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = currentCognitoUser;
+      if (!user) {
+        throw new Error('用戶會話已失效，請重新登入');
+      }
+
+      // 更新 localStorage 中的 MFA 類型
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cognito_mfa_type', mfaType);
+      }
+
+      const result = await new Promise<any>((resolve, reject) => {
+        user.sendMFASelectionAnswer(mfaType === 'SMS_MFA' ? 'SMS_MFA' : 'SOFTWARE_TOKEN_MFA', {
+          onSuccess: (session) => {
+            resolve({ success: true, session });
+          },
+          onFailure: (err) => {
+            reject(err);
+          },
+          mfaRequired: (challengeName, challengeParameters) => {
+            // 成功選擇了 SMS MFA
+            setMfaType('SMS_MFA');
+            resolve({ success: true, mfaType: 'SMS_MFA' });
+          },
+          totpRequired: (challengeName, challengeParameters) => {
+            // 成功選擇了 TOTP MFA
+            setMfaType('SOFTWARE_TOKEN_MFA');
+            resolve({ success: true, mfaType: 'SOFTWARE_TOKEN_MFA' });
+          }
+        });
+      });
+
+      // 如果直接返回了會話，說明驗證已完成
+      if (result.session) {
+        clearMfaState();
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cognito_password');
+        }
+        showSuccess('登入成功');
+        return { success: true, session: result.session };
+      }
+
+      // 否則，更新 MFA 類型，等待用戶輸入驗證碼
+      setMfaType(result.mfaType);
+      return { success: true };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      let errorMessage = '選擇 MFA 類型時發生錯誤';
+
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, [currentCognitoUser, clearMfaState]);
 
   // 完成新密碼設置
   const completeNewPassword = useCallback(async (newPassword: string): Promise<{ success: boolean; session?: CognitoUserSession }> => {
@@ -486,40 +692,348 @@ export const useCognito = () => {
     }
   }, []);
 
+  // 取得用戶 MFA 配置
+  const getUserMfaSettings = useCallback(async (): Promise<{
+    success: boolean;
+    preferredMfa?: string;
+    mfaOptions?: MFAOption[];
+    enabled?: boolean;
+  }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = userPool.getCurrentUser();
+      if (!user) {
+        throw new Error('用戶未登入');
+      }
+
+      // 獲取 MFA 選項
+      const mfaOptions = await new Promise<MFAOption[]>((resolve, reject) => {
+        user.getMFAOptions((err, result) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(result || []);
+        });
+      });
+
+      // 獲取用戶數據，包含首選 MFA 方式
+      const userData = await new Promise<any>((resolve, reject) => {
+        user.getUserData((err, data) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(data);
+        });
+      });
+
+      const preferredMfa = userData.PreferredMfaSetting || '';
+      const mfaEnabled = !!preferredMfa || mfaOptions.length > 0;
+
+      return { 
+        success: true, 
+        preferredMfa, 
+        mfaOptions, 
+        enabled: mfaEnabled 
+      };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      let errorMessage = '獲取 MFA 設置失敗';
+
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 設置 TOTP MFA
+  const setupTotpMfa = useCallback(async (): Promise<{
+    success: boolean;
+    secretCode?: string;
+    qrCodeUrl?: string;
+  }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = userPool.getCurrentUser();
+      if (!user) {
+        throw new Error('用戶未登入');
+      }
+
+      // 關聯軟件令牌 (獲取 secret code)
+      const secretCode = await new Promise<string>((resolve, reject) => {
+        user.associateSoftwareToken({
+          associateSecretCode: (secretCode) => {
+            resolve(secretCode);
+          },
+          onFailure: (err) => {
+            reject(err);
+          }
+        });
+      });
+
+      // 生成 QR 碼 URL
+      // 使用 otpauth URL 格式: otpauth://totp/[服務名稱]:[用戶名]?secret=[密鑰]&issuer=[服務名稱]
+      const username = user.getUsername();
+      const appName = cognitoConfig.appName || 'Hilton AppStream';
+      const qrCodeUrl = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(username)}?secret=${secretCode}&issuer=${encodeURIComponent(appName)}`;
+
+      // 保存密鑰和 QR 碼 URL 到狀態
+      setMfaSecret(secretCode);
+      setMfaSecretQRCode(qrCodeUrl);
+
+      return { 
+        success: true, 
+        secretCode, 
+        qrCodeUrl 
+      };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      let errorMessage = '設置 TOTP MFA 失敗';
+
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 驗證並啟用 TOTP MFA
+  const verifyAndEnableTotpMfa = useCallback(async (
+    totpCode: string, 
+    deviceName: string = '我的驗證器'
+  ): Promise<{
+    success: boolean;
+  }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = userPool.getCurrentUser();
+      if (!user) {
+        throw new Error('用戶未登入');
+      }
+
+      // 驗證 TOTP 碼
+      await new Promise<void>((resolve, reject) => {
+        user.verifySoftwareToken(totpCode, deviceName, {
+          onSuccess: () => {
+            resolve();
+          },
+          onFailure: (err) => {
+            reject(err);
+          }
+        });
+      });
+
+      // 設置 TOTP 為首選 MFA 方式
+      await new Promise<void>((resolve, reject) => {
+        user.setUserMfaPreference(
+          null, // SMS MFA 設置
+          { 
+            Enabled: true, 
+            PreferredMfa: true 
+          }, // TOTP MFA 設置
+          (err, result) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            resolve();
+          }
+        );
+      });
+
+      showSuccess('TOTP MFA 已成功啟用');
+      return { success: true };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      let errorMessage = '驗證 TOTP 碼失敗';
+
+      if (cognitoError.name === 'EnableSoftwareTokenMFAException') {
+        errorMessage = '驗證碼錯誤，請確保您的驗證器應用是同步的並輸入正確的驗證碼';
+      } else if (cognitoError.name === 'NotAuthorizedException') {
+        errorMessage = '用戶未授權，請重新登入';
+      } else {
+        errorMessage = cognitoError.message || '啟用 TOTP MFA 失敗';
+      }
+
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 設置 SMS MFA
+  const setupSmsMfa = useCallback(async (): Promise<{
+    success: boolean;
+  }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = userPool.getCurrentUser();
+      if (!user) {
+        throw new Error('用戶未登入');
+      }
+
+      // 設置 SMS MFA 為首選 MFA 方式
+      await new Promise<void>((resolve, reject) => {
+        user.setUserMfaPreference(
+          { 
+            Enabled: true, 
+            PreferredMfa: true 
+          }, // SMS MFA 設置
+          null, // TOTP MFA 設置
+          (err, result) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            resolve();
+          }
+        );
+      });
+
+      showSuccess('SMS MFA 已成功啟用');
+      return { success: true };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      let errorMessage = '設置 SMS MFA 失敗';
+
+      if (cognitoError.name === 'InvalidParameterException') {
+        errorMessage = '無法啟用 SMS MFA，請確保您的帳戶有有效的電話號碼';
+      } else if (cognitoError.name === 'NotAuthorizedException') {
+        errorMessage = '用戶未授權，請重新登入';
+      } else {
+        errorMessage = cognitoError.message || '啟用 SMS MFA 失敗';
+      }
+
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 禁用 MFA
+  const disableMfa = useCallback(async (): Promise<{
+    success: boolean;
+  }> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = userPool.getCurrentUser();
+      if (!user) {
+        throw new Error('用戶未登入');
+      }
+
+      // 設置無 MFA 
+      await new Promise<void>((resolve, reject) => {
+        user.setUserMfaPreference(
+          { 
+            Enabled: false, 
+            PreferredMfa: false 
+          }, // SMS MFA 設置
+          { 
+            Enabled: false, 
+            PreferredMfa: false 
+          }, // TOTP MFA 設置
+          (err, result) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            resolve();
+          }
+        );
+      });
+
+      showSuccess('MFA 已成功禁用');
+      return { success: true };
+    } catch (err) {
+      const cognitoError = err as CognitoError;
+      let errorMessage = '禁用 MFA 失敗';
+
+      if (cognitoError.name === 'NotAuthorizedException') {
+        errorMessage = '用戶未授權，請重新登入';
+      } else {
+        errorMessage = cognitoError.message || '禁用 MFA 失敗';
+      }
+
+      setError(errorMessage);
+      showError(errorMessage);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // 在組件掛載時檢查用戶的身份驗證狀態
   useEffect(() => {
-    const checkNewPasswordRequired = async () => {
-      if (typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true') {
-        // 如果有儲存的用戶名，嘗試恢復 CognitoUser 實例
-        const username = localStorage.getItem('cognito_username');
-        if (username) {
-          const cognitoUser = new CognitoUser({
-            Username: username,
-            Pool: userPool
-          });
-          
-          // 嘗試恢復挑戰會話狀態
-          const challengeSessionData = localStorage.getItem('cognito_challenge_session');
-          if (challengeSessionData) {
-            try {
-              const sessionInfo = JSON.parse(challengeSessionData);
-              if (sessionInfo.authenticationFlowType) {
-                cognitoUser.setAuthenticationFlowType(sessionInfo.authenticationFlowType);
+    const checkAuthStatus = async () => {
+      if (typeof window !== 'undefined') {
+        // 檢查是否需要新密碼
+        if (localStorage.getItem('cognito_new_password_required') === 'true') {
+          // 如果有儲存的用戶名，嘗試恢復 CognitoUser 實例
+          const username = localStorage.getItem('cognito_username');
+          if (username) {
+            const cognitoUser = new CognitoUser({
+              Username: username,
+              Pool: userPool
+            });
+            
+            // 嘗試恢復挑戰會話狀態
+            const challengeSessionData = localStorage.getItem('cognito_challenge_session');
+            if (challengeSessionData) {
+              try {
+                const sessionInfo = JSON.parse(challengeSessionData);
+                if (sessionInfo.authenticationFlowType) {
+                  cognitoUser.setAuthenticationFlowType(sessionInfo.authenticationFlowType);
+                }
+                // 設置挑戰名稱
+                cognitoUser.challengeName = 'NEW_PASSWORD_REQUIRED';
+              } catch (e) {
+                console.error('解析會話數據失敗:', e);
               }
-              // 設置挑戰名稱
-              cognitoUser.challengeName = 'NEW_PASSWORD_REQUIRED';
-            } catch (e) {
-              console.error('解析會話數據失敗:', e);
             }
+            
+            setCurrentCognitoUser(cognitoUser);
           }
-          
-          setCurrentCognitoUser(cognitoUser);
+          setNewPasswordRequired(true);
         }
-        setNewPasswordRequired(true);
+        
+        // 檢查是否需要 MFA 驗證
+        if (localStorage.getItem('cognito_mfa_required') === 'true') {
+          const username = localStorage.getItem('cognito_username');
+          const mfaTypeValue = localStorage.getItem('cognito_mfa_type') as MFAType || 'SMS_MFA';
+          
+          if (username) {
+            const cognitoUser = new CognitoUser({
+              Username: username,
+              Pool: userPool
+            });
+            
+            setCurrentCognitoUser(cognitoUser);
+            setMfaRequired(true);
+            setMfaType(mfaTypeValue);
+          }
+        }
       }
     };
     
-    checkNewPasswordRequired();
+    checkAuthStatus();
   }, []);
 
   return {
@@ -535,6 +1049,18 @@ export const useCognito = () => {
     loading,
     error,
     newPasswordRequired,
-    cancelNewPasswordChallenge
+    cancelNewPasswordChallenge,
+    // MFA 相關函數和狀態
+    mfaRequired,
+    mfaType,
+    verifyMfaCode,
+    selectMfaType,
+    getUserMfaSettings,
+    setupTotpMfa,
+    verifyAndEnableTotpMfa,
+    setupSmsMfa,
+    disableMfa,
+    mfaSecret,
+    mfaSecretQRCode
   };
 }; 

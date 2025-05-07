@@ -1,13 +1,19 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CognitoUser, CognitoUserSession } from 'amazon-cognito-identity-js';
-import { useCognito } from '@/lib/hooks/useCognito';
-import { showError, showInfo } from '@/lib/utils/notification';
+import { useCognito, MFAType } from '@/lib/hooks/useCognito';
+import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
 import { useRouter } from 'next/router';
 
 type AuthContextType = {
   isAuthenticated: boolean;
   user: CognitoUser | null;
-  login: (username: string, password: string) => Promise<{ success: boolean; newPasswordRequired?: boolean }>;
+  login: (username: string, password: string) => Promise<{ 
+    success: boolean; 
+    newPasswordRequired?: boolean;
+    mfaRequired?: boolean;
+    mfaType?: MFAType;
+    availableMfaTypes?: any[];
+  }>;
   completeNewPassword: (newPassword: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
@@ -15,6 +21,27 @@ type AuthContextType = {
   getToken: () => Promise<string | null>;
   newPasswordRequired: boolean;
   cancelNewPasswordChallenge: () => void;
+  // MFA 相關
+  mfaRequired: boolean;
+  mfaType: MFAType;
+  verifyMfaCode: (mfaCode: string) => Promise<boolean>;
+  selectMfaType: (mfaType: MFAType) => Promise<boolean>;
+  getUserMfaSettings: () => Promise<{
+    success: boolean;
+    preferredMfa?: string;
+    mfaOptions?: any[];
+    enabled?: boolean;
+  }>;
+  setupTotpMfa: () => Promise<{
+    success: boolean;
+    secretCode?: string;
+    qrCodeUrl?: string;
+  }>;
+  verifyAndEnableTotpMfa: (totpCode: string, deviceName?: string) => Promise<boolean>;
+  setupSmsMfa: () => Promise<boolean>;
+  disableMfa: () => Promise<boolean>;
+  mfaSecret: string;
+  mfaSecretQRCode: string;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,7 +70,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading: cognitoLoading,
     error: cognitoError,
     newPasswordRequired: cognitoNewPasswordRequired,
-    cancelNewPasswordChallenge: cognitoCancelNewPasswordChallenge
+    cancelNewPasswordChallenge: cognitoCancelNewPasswordChallenge,
+    // MFA 相關
+    mfaRequired: cognitoMfaRequired,
+    mfaType: cognitoMfaType,
+    verifyMfaCode: cognitoVerifyMfaCode,
+    selectMfaType: cognitoSelectMfaType,
+    getUserMfaSettings: cognitoGetUserMfaSettings,
+    setupTotpMfa: cognitoSetupTotpMfa,
+    verifyAndEnableTotpMfa: cognitoVerifyAndEnableTotpMfa,
+    setupSmsMfa: cognitoSetupSmsMfa,
+    disableMfa: cognitoDisableMfa,
+    mfaSecret: cognitoMfaSecret,
+    mfaSecretQRCode: cognitoMfaSecretQRCode
   } = useCognito();
 
   const router = useRouter();
@@ -100,9 +139,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [getCurrentUser, getCurrentSession]);
 
   // 登入函數
-  const handleLogin = async (username: string, password: string): Promise<{ success: boolean; newPasswordRequired?: boolean }> => {
+  const handleLogin = async (username: string, password: string): Promise<{ 
+    success: boolean; 
+    newPasswordRequired?: boolean;
+    mfaRequired?: boolean;
+    mfaType?: MFAType;
+    availableMfaTypes?: any[];
+  }> => {
     try {
       const result = await signIn(username, password);
+      
+      if (result.mfaRequired) {
+        // 如果需要 MFA 驗證，返回相關信息
+        return { 
+          success: false, 
+          mfaRequired: true, 
+          mfaType: result.mfaType, 
+          availableMfaTypes: result.availableMfaTypes
+        };
+      }
       
       if (result.newPasswordRequired) {
         return { success: false, newPasswordRequired: true };
@@ -121,6 +176,101 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Login error:', error);
       return { success: false };
+    }
+  };
+
+  // 驗證 MFA 碼
+  const handleVerifyMfaCode = async (mfaCode: string): Promise<boolean> => {
+    try {
+      const result = await cognitoVerifyMfaCode(mfaCode);
+      
+      if (result.success && result.session) {
+        // 保存令牌
+        await saveTokenToStorage(result.session);
+        
+        setIsAuthenticated(true);
+        setUser(getCurrentUser());
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('MFA verification error:', error);
+      return false;
+    }
+  };
+
+  // 選擇 MFA 類型
+  const handleSelectMfaType = async (mfaType: MFAType): Promise<boolean> => {
+    try {
+      const result = await cognitoSelectMfaType(mfaType);
+      
+      if (result.success && result.session) {
+        // 如果選擇 MFA 類型後直接返回了會話，保存令牌
+        await saveTokenToStorage(result.session);
+        
+        setIsAuthenticated(true);
+        setUser(getCurrentUser());
+        return true;
+      }
+      
+      return result.success;
+    } catch (error) {
+      console.error('Select MFA type error:', error);
+      return false;
+    }
+  };
+
+  // 獲取用戶 MFA 設置
+  const handleGetUserMfaSettings = async () => {
+    try {
+      return await cognitoGetUserMfaSettings();
+    } catch (error) {
+      console.error('Get MFA settings error:', error);
+      return { success: false };
+    }
+  };
+
+  // 設置 TOTP MFA
+  const handleSetupTotpMfa = async () => {
+    try {
+      return await cognitoSetupTotpMfa();
+    } catch (error) {
+      console.error('Setup TOTP MFA error:', error);
+      return { success: false };
+    }
+  };
+
+  // 驗證並啟用 TOTP MFA
+  const handleVerifyAndEnableTotpMfa = async (totpCode: string, deviceName?: string): Promise<boolean> => {
+    try {
+      const result = await cognitoVerifyAndEnableTotpMfa(totpCode, deviceName);
+      return result.success;
+    } catch (error) {
+      console.error('Verify and enable TOTP MFA error:', error);
+      return false;
+    }
+  };
+
+  // 設置 SMS MFA
+  const handleSetupSmsMfa = async (): Promise<boolean> => {
+    try {
+      const result = await cognitoSetupSmsMfa();
+      return result.success;
+    } catch (error) {
+      console.error('Setup SMS MFA error:', error);
+      return false;
+    }
+  };
+
+  // 禁用 MFA
+  const handleDisableMfa = async (): Promise<boolean> => {
+    try {
+      const result = await cognitoDisableMfa();
+      return result.success;
+    } catch (error) {
+      console.error('Disable MFA error:', error);
+      return false;
     }
   };
 
@@ -218,7 +368,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         error: cognitoError,
         getToken: handleGetToken,
         newPasswordRequired: cognitoNewPasswordRequired,
-        cancelNewPasswordChallenge: cognitoCancelNewPasswordChallenge
+        cancelNewPasswordChallenge: cognitoCancelNewPasswordChallenge,
+        // MFA 相關
+        mfaRequired: cognitoMfaRequired,
+        mfaType: cognitoMfaType,
+        verifyMfaCode: handleVerifyMfaCode,
+        selectMfaType: handleSelectMfaType,
+        getUserMfaSettings: handleGetUserMfaSettings,
+        setupTotpMfa: handleSetupTotpMfa,
+        verifyAndEnableTotpMfa: handleVerifyAndEnableTotpMfa,
+        setupSmsMfa: handleSetupSmsMfa,
+        disableMfa: handleDisableMfa,
+        mfaSecret: cognitoMfaSecret,
+        mfaSecretQRCode: cognitoMfaSecretQRCode
       }}
     >
       {children}

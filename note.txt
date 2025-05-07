@@ -15,7 +15,6 @@ hilton-appstream-mfa/
 │   │   └── utils/
 │   │       └── notification.ts      # 通知功能
 │   ├── pages/
-│   │   ├── api/
 │   │   ├── _app.tsx                 # 應用入口
 │   │   ├── _document.tsx            # 自定義文檔
 │   │   ├── index.tsx                # 首頁
@@ -25,30 +24,3 @@ hilton-appstream-mfa/
 │       └── globals.css              # 全局樣式
 
 
-主要文件說明
-身份驗證相關文件
-src/components/auth/AuthContext.tsx: 提供身份驗證上下文，管理用戶登入狀態和令牌
-src/components/auth/ProtectedRoute.tsx: 保護路由，確保未登入用戶無法訪問受保護頁面
-src/common/hooks/useCognito.ts: 封裝與 AWS Cognito 交互的所有功能
-src/common/config/cognito.ts: 集中管理 AWS Cognito 配置
-前端界面
-src/pages/login.tsx: 登入頁面，包含用戶名和密碼輸入表單
-src/pages/index.tsx: 應用首頁，需要登入後才能訪問
-API 相關
-src/common/api/apiClient.ts: 配置 API 請求客戶端，自動為請求添加認證令牌
-配置文件
-.env.local: (需要手動創建) 包含 AWS Cognito 配置的環境變數
-
-----
-需求：
-登入介面
-首次登入更改密碼
-MFA 頁面
-忘記密碼
-統一通知消息樣式
-使用 Cognito 進行登入驗證以及 MFA 機制
-使用 AWS SDK for JavaScript v3 串 Appstream 功能
-部署到 Amplify 
-響應式設計
-各種裝置、手機等嘗試登入
-環境變數
