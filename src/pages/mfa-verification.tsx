@@ -157,8 +157,6 @@ export default function MfaVerification() {
       sessionStorage.setItem('returningFromMfa', 'true');
     }
     
-    showInfo('正在返回登入頁面...');
-    
     // 使用 setTimeout 確保登出操作完成後再跳轉
     setTimeout(() => {
       router.push('/login');

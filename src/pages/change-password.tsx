@@ -128,12 +128,16 @@ export default function ChangePassword() {
         
         // 檢查是否是首次登入流程，如果是，且需要設置MFA，則跳轉到MFA設置頁面
         if (isFirstLogin && isMfaSetupRequired) {
+          // 顯示即將跳轉的提示信息
+          showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
+          
           // 延遲一秒後跳轉，確保提示訊息能被看到
           setTimeout(() => {
             router.push('/mfa-setup');
-          }, 1000);
+          }, 1500);
         } else {
           // 否則直接跳轉到首頁
+          showInfo('即將跳轉到首頁...');
           setTimeout(() => {
             router.push('/');
           }, 1000);
@@ -148,10 +152,12 @@ export default function ChangePassword() {
       // 檢查是否是 MFA 相關的錯誤
       if (err instanceof Error && (err.message.includes('MFA') || err.message.includes('多因素認證'))) {
         // 這種情況下，密碼可能已經設置成功，只是需要進行 MFA 設置
+        showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
+        
         // 延遲一秒後跳轉到 MFA 設置頁面
         setTimeout(() => {
           router.push('/mfa-setup');
-        }, 1000);
+        }, 1500);
       } else {
         showError('設置新密碼時發生錯誤，請稍後再試');
       }

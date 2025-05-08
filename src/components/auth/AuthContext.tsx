@@ -481,17 +481,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // 如果是首次登入流程，且設置了新密碼，更新進度到MFA設置階段
         if (isFirstLogin && currentSetupStep === 'password') {
           if (isMfaSetupRequired) {
+            console.log('密碼設置成功，進入MFA設置階段');
             setCurrentSetupStep('mfa');
+            
+            // 保存到localStorage，確保MFA設置標記已設置
             if (typeof window !== 'undefined') {
               localStorage.setItem('cognito_setup_step', 'mfa');
+              localStorage.setItem('cognito_mfa_setup_required', 'true');
+              // 標記為首次登入，確保導航邏輯正確
+              localStorage.setItem('cognito_first_login', 'true');
             }
           } else {
+            console.log('密碼設置成功，MFA設置已跳過，設置流程完成');
             completeSetup();
           }
-          
-          // 立即檢查MFA設置狀態
-          handleGetUserMfaSettings().catch(console.error);
         }
+        
+        // 立即檢查MFA設置狀態
+        handleGetUserMfaSettings().catch(console.error);
         
         return true;
       }
@@ -520,12 +527,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // 轉到 MFA 設置頁面
           if (isFirstLogin && currentSetupStep === 'password') {
+            // 更新設置階段為MFA
             setCurrentSetupStep('mfa');
+            
+            // 保存到localStorage，確保MFA設置標記已設置
             if (typeof window !== 'undefined') {
               localStorage.setItem('cognito_setup_step', 'mfa');
               // 清除需要新密碼的標記，因為密碼已設置
               localStorage.removeItem('cognito_new_password_required');
               localStorage.removeItem('cognito_password');
+              // 標記為需要設置MFA
+              localStorage.setItem('cognito_mfa_setup_required', 'true');
+              // 標記為首次登入，確保導航邏輯正確
+              localStorage.setItem('cognito_first_login', 'true');
             }
           }
           

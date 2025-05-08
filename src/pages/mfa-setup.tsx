@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
-import { showError, showSuccess } from '@/lib/utils/notification';
+import { showError, showSuccess, showInfo } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
 import SetupProgressIndicator from '@/components/common/SetupProgressIndicator';
 
@@ -20,6 +20,8 @@ export default function MfaSetup() {
     secretCode?: string;
     qrCodeUrl?: string;
   }>({});
+  // 新增狀態：是否是由密碼變更頁面跳轉而來
+  const [isFromPasswordChange, setIsFromPasswordChange] = useState(false);
 
   const router = useRouter();
   const { 
@@ -43,6 +45,16 @@ export default function MfaSetup() {
     // 等待認證狀態加載完成
     if (authLoading) return;
     
+    // 檢查是否來自密碼變更頁面
+    if (typeof window !== 'undefined') {
+      // 檢查是否是首次登入且正在進行 MFA 設置階段
+      if (isFirstLogin && currentSetupStep === 'mfa') {
+        setIsFromPasswordChange(true);
+        // 顯示歡迎提示，告知用戶需要完成MFA設置
+        showInfo('歡迎！請完成多因素認證(MFA)設置，以增強您的帳戶安全性。');
+      }
+    }
+    
     const checkMfaSettings = async () => {
       try {
         setLoading(true);
@@ -54,6 +66,17 @@ export default function MfaSetup() {
             preferredMfa: result.preferredMfa,
             mfaOptions: result.mfaOptions || []
           });
+          
+          // 如果MFA已經啟用，但用戶還在首次登入流程中，自動完成設置
+          if (result.enabled && isFirstLogin && currentSetupStep === 'mfa') {
+            showSuccess('MFA已設置完成！');
+            completeSetup();
+            
+            // 延遲一秒後跳轉到首頁
+            setTimeout(() => {
+              router.push('/');
+            }, 1500);
+          }
         }
       } catch (error) {
         console.error('Failed to get MFA settings:', error);
@@ -65,7 +88,7 @@ export default function MfaSetup() {
 
     // 只需檢查當前 MFA 設置，路由保護已經由 ProtectedRoute 處理
     checkMfaSettings();
-  }, [isAuthenticated, getUserMfaSettings, router, authLoading]);
+  }, [isAuthenticated, getUserMfaSettings, router, authLoading, isFirstLogin, currentSetupStep, completeSetup]);
 
   // 開始設置 TOTP
   const handleSetupTotpMfa = async () => {
@@ -120,10 +143,15 @@ export default function MfaSetup() {
         if (isFirstLogin && currentSetupStep === 'mfa') {
           completeSetup();
           
+          // 為來自密碼變更的用戶提供特別的成功訊息
+          if (isFromPasswordChange) {
+            showSuccess('MFA設置完成！您已成功完成所有安全設置，即將跳轉到首頁。');
+          }
+          
           // 延遲一秒後跳轉到首頁
           setTimeout(() => {
             router.push('/');
-          }, 1000);
+          }, 1500);
         }
       } else {
         showError('驗證失敗，請確保輸入了正確的驗證碼');
@@ -159,10 +187,15 @@ export default function MfaSetup() {
         if (isFirstLogin && currentSetupStep === 'mfa') {
           completeSetup();
           
+          // 為來自密碼變更的用戶提供特別的成功訊息
+          if (isFromPasswordChange) {
+            showSuccess('MFA設置完成！您已成功完成所有安全設置，即將跳轉到首頁。');
+          }
+          
           // 延遲一秒後跳轉到首頁
           setTimeout(() => {
             router.push('/');
-          }, 1000);
+          }, 1500);
         }
       } else {
         showError('設置 SMS MFA 失敗，請確保您的帳戶已關聯手機號碼');
@@ -237,6 +270,24 @@ export default function MfaSetup() {
           currentStep="mfa" 
           isMfaRequired={true} 
         />
+      )}
+      
+      {/* 如果來自密碼變更頁面，顯示特別的提示信息 */}
+      {isFromPasswordChange && (
+        <div style={{ 
+          padding: '1rem', 
+          marginBottom: '1.5rem', 
+          backgroundColor: '#f0f7ff', 
+          borderRadius: '4px',
+          border: '1px solid #91caff' 
+        }}>
+          <p style={{ fontSize: '1rem', color: '#175fbe', marginBottom: '0.5rem' }}>
+            <strong>完成最後一步安全設置</strong>
+          </p>
+          <p style={{ fontSize: '0.9rem', color: '#1e73be', marginBottom: '0' }}>
+            您已經成功更改了密碼，現在請設置多因素認證(MFA)以完成安全設置流程。這將大大提高您帳戶的安全性。
+          </p>
+        </div>
       )}
       
       <div style={{ marginBottom: '2rem' }}>
