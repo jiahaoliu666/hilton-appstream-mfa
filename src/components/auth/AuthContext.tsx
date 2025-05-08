@@ -229,6 +229,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         setUser(getCurrentUser());
         
+        // 檢查是否有未完成的設置流程
+        const savedFirstLogin = typeof window !== 'undefined' ? 
+          localStorage.getItem('cognito_first_login') === 'true' : false;
+        const savedSetupStep = typeof window !== 'undefined' ? 
+          localStorage.getItem('cognito_setup_step') as SetupStep : null;
+          
+        // 如果本地儲存有未完成的設置流程
+        if (savedFirstLogin && savedSetupStep && savedSetupStep !== 'complete') {
+          console.log('檢測到未完成的設置流程:', savedSetupStep);
+          
+          // 恢復設置狀態
+          setIsFirstLogin(true);
+          setCurrentSetupStep(savedSetupStep);
+          
+          // 如果未完成的是 MFA 設置
+          if (savedSetupStep === 'mfa') {
+            const isMfaRequired = typeof window !== 'undefined' ? 
+              localStorage.getItem('cognito_mfa_setup_required') !== 'false' : true;
+            setIsMfaSetupRequired(isMfaRequired);
+          }
+        } 
+        // 如果沒有未完成的設置流程，但狀態中還有設置標記，進行清理
+        else if (isFirstLogin) {
+          setIsFirstLogin(false);
+          setCurrentSetupStep('complete');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cognito_first_login', 'false');
+            localStorage.setItem('cognito_setup_step', 'complete');
+          }
+        }
+        
         // 檢查是否是首次登入流程，如果是，且已完成密碼設置，更新到MFA階段
         if (isFirstLogin && currentSetupStep === 'password') {
           setCurrentSetupStep('mfa');
@@ -395,6 +426,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // 清除需要新密碼的標記
         if (typeof window !== 'undefined') {
           localStorage.removeItem('cognito_new_password_required');
+          localStorage.removeItem('cognito_password');
         }
         
         // 如果是首次登入流程，且設置了新密碼，更新進度到MFA設置階段
@@ -429,24 +461,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('AuthContext: 完成新密碼過程中發生錯誤:', error);
       
-      // 如果錯誤包含 Session 相關的錯誤，顯示更有指導性的錯誤訊息
-      if (error instanceof Error && 
-          (error.message.includes('Session') || error.message.includes('會話'))) {
-        showError('您的會話已過期。請返回登入頁面，重新登入後再設置新密碼');
-        
-        // 延遲一秒後跳轉到登入頁面，給用戶時間看到錯誤訊息
-        setTimeout(() => {
-          // 清除新密碼設置狀態
-          cognitoCancelNewPasswordChallenge();
+      // 檢查是否是 MFA 相關的錯誤
+      if (error instanceof Error) {
+        if (error.message.includes('MFA') || error.message.includes('多因素認證')) {
+          showInfo('您需要設置多因素認證 (MFA)，即將跳轉到 MFA 設置頁面');
           
-          // 使用 window.location 強制刷新到登入頁
-          window.location.href = '/login';
-        }, 1500);
-      } else {
-        showError('設置新密碼時發生錯誤: ' + (error instanceof Error ? error.message : '未知錯誤'));
+          // 轉到 MFA 設置頁面
+          if (isFirstLogin && currentSetupStep === 'password') {
+            setCurrentSetupStep('mfa');
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_setup_step', 'mfa');
+              // 清除需要新密碼的標記，因為密碼已設置
+              localStorage.removeItem('cognito_new_password_required');
+              localStorage.removeItem('cognito_password');
+            }
+          }
+          
+          // 延遲一秒後跳轉到 MFA 設置頁面
+          setTimeout(() => {
+            router.push('/mfa-setup');
+          }, 1500);
+          
+          return true; // 密碼已設置成功，只是需要繼續設置 MFA
+        }
+      
+        // 如果錯誤包含 Session 相關的錯誤，顯示更有指導性的錯誤訊息
+        if (error.message.includes('Session') || error.message.includes('會話')) {
+          showError('您的會話已過期。請返回登入頁面，重新登入後再設置新密碼');
+          
+          // 延遲一秒後跳轉到登入頁面，給用戶時間看到錯誤訊息
+          setTimeout(() => {
+            // 清除新密碼設置狀態
+            cognitoCancelNewPasswordChallenge();
+            
+            // 使用 window.location 強制刷新到登入頁
+            window.location.href = '/login';
+          }, 1500);
+        } else {
+          showError('設置新密碼時發生錯誤: ' + (error instanceof Error ? error.message : '未知錯誤'));
+        }
       }
       
       return false;
+    } finally {
+      setAuthLoading(false);
     }
   };
 

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './AuthContext';
+import { SetupStep } from '@/components/common/SetupProgressIndicator';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ const publicPaths = ['/login', '/signup', '/forgot-password'];
 
 // 特殊路徑配置 
 const changePasswordPath = '/change-password';
-const mfaPath = '/login'; // MFA 驗證在登入頁面進行
+const mfaPath = '/mfa-verification'; // MFA 驗證頁面
 const mfaSetupPath = '/mfa-setup'; // MFA 設置頁面
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
@@ -29,12 +30,35 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   const isPublicPage = publicPaths.includes(router.pathname);
   const isChangePasswordPage = router.pathname === changePasswordPath;
-  const isLoginPage = router.pathname === mfaPath;
+  const isMfaVerificationPage = router.pathname === mfaPath;
   const isMfaSetupPage = router.pathname === mfaSetupPath;
 
   useEffect(() => {
     // 如果正在加載身份驗證狀態，不執行任何重定向
     if (loading) return;
+
+    // 檢查是否存在從 MFA 頁面返回登入頁面的標記
+    const isReturningFromMfa = 
+      typeof window !== 'undefined' && sessionStorage.getItem('returningFromMfa') === 'true';
+    
+    // 如果存在標記，清除它並允許返回登入頁面
+    if (isReturningFromMfa && router.pathname === '/login') {
+      sessionStorage.removeItem('returningFromMfa');
+      return; // 允許繼續訪問登入頁面
+    }
+
+    console.log('ProtectedRoute檢測條件:', {
+      path: router.pathname,
+      isPublicPage,
+      isMfaVerificationPage,
+      isChangePasswordPage,
+      isMfaSetupPage,
+      isAuthenticated,
+      newPasswordRequired,
+      mfaRequired,
+      isFirstLogin,
+      currentSetupStep
+    });
 
     // 檢查是否需要設置新密碼（從 localStorage 或狀態中獲取）
     const isNewPasswordRequiredFromStorage = 
@@ -46,49 +70,78 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_required') === 'true';
     const needsMfa = mfaRequired || isMfaRequiredFromStorage;
     
-    // 首次登入設置流程處理
+    // 重要: 判斷邏輯的優先順序調整 - 避免無限循環
+    
+    // 1. 如果當前在 MFA 驗證頁面，不進行任何重定向
+    if (isMfaVerificationPage && needsMfa) {
+      // 如果正在 MFA 驗證頁面且確實需要 MFA，則留在該頁面
+      return;
+    }
+    
+    // 2. 如果當前在密碼設置頁面，且需要設置新密碼，則留在該頁面
+    if (isChangePasswordPage && needsNewPassword) {
+      return;
+    }
+    
+    // 3. 如果當前在 MFA 設置頁面且是首次登入流程的 MFA 階段，則留在該頁面
+    if (isMfaSetupPage && isFirstLogin && currentSetupStep === 'mfa') {
+      return;
+    }
+    
+    // 4. 處理需要設置新密碼的情況（優先於其他流程）
+    if (needsNewPassword && !isChangePasswordPage) {
+      console.log('需要設置新密碼，重定向到密碼設置頁面');
+      router.push(changePasswordPath);
+      return;
+    }
+    
+    // 5. 處理需要MFA驗證的情況
+    if (needsMfa && !isMfaVerificationPage) {
+      console.log('需要MFA驗證，重定向到MFA驗證頁面');
+      router.push(mfaPath);
+      return;
+    }
+    
+    // 6. 首次登入設置流程處理
     if (isFirstLogin) {
+      console.log('首次登入流程檢測 - 當前步驟:', currentSetupStep, '當前頁面:', router.pathname);
+      
       // 如果處於 password 階段但不在密碼設置頁面，重定向到密碼設置頁面
       if (currentSetupStep === 'password' && !isChangePasswordPage) {
-        // 防止在登入頁面和密碼設置頁面間循環跳轉
-        if (router.pathname !== mfaPath) {
-          router.push(changePasswordPath);
-        }
+        console.log('重定向到密碼設置頁面');
+        router.push(changePasswordPath);
         return;
       }
       
       // 如果處於 mfa 階段但不在 MFA 設置頁面，且 MFA 設置是必須的，重定向到 MFA 設置頁面
       if (currentSetupStep === 'mfa' && !isMfaSetupPage && isMfaSetupRequired) {
+        console.log('重定向到 MFA 設置頁面');
         router.push(mfaSetupPath);
         return;
       }
-    }
-    // 一般登入流程處理
-    else {
-      // 處理首次登入需要設置新密碼的情況
-      if (needsNewPassword && !isChangePasswordPage) {
-        router.push(changePasswordPath);
-        return;
-      }
       
-      // 處理需要 MFA 驗證的情況，重定向到登入頁面進行 MFA 驗證
-      if (needsMfa && !isLoginPage) {
-        router.push(mfaPath);
-        return;
-      }
-      
-      // 如果已經登入且不需要 MFA 和新密碼，但訪問的是登入頁面，重定向到首頁
-      if (isAuthenticated && !needsMfa && !needsNewPassword && isPublicPage) {
-        router.replace('/');
-        return;
-      }
-      
-      // 如果未登入且訪問的不是公開頁面，重定向到登入頁面
-      if (!isAuthenticated && !isPublicPage && !needsMfa && !needsNewPassword) {
-        router.push('/login');
+      // 如果用戶已完成設置但仍在設置頁面，重定向到首頁
+      if (currentSetupStep === 'complete' && (isChangePasswordPage || isMfaSetupPage)) {
+        console.log('設置已完成，重定向到首頁');
+        router.push('/');
         return;
       }
     }
+    
+    // 7. 一般流程處理 - 未登入用戶訪問受保護頁面的情況
+    if (!isAuthenticated && !isPublicPage && !needsNewPassword && !needsMfa) {
+      console.log('未登入用戶訪問受保護頁面，重定向到登入頁面');
+      router.push('/login');
+      return;
+    }
+    
+    // 8. 如果已經登入且不需要 MFA 和新密碼，但訪問的是登入頁面或公開頁面，重定向到首頁
+    if (isAuthenticated && !needsMfa && !needsNewPassword && isPublicPage) {
+      console.log('已登入用戶訪問登入頁面或公開頁面，重定向到首頁');
+      router.replace('/');
+      return;
+    }
+    
   }, [
     isAuthenticated, 
     router, 
@@ -97,9 +150,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     isPublicPage, 
     isChangePasswordPage,
     isMfaSetupPage,
+    isMfaVerificationPage,
     newPasswordRequired, 
     mfaRequired, 
-    isLoginPage,
     isFirstLogin,
     currentSetupStep,
     isMfaSetupRequired
@@ -120,13 +173,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // 始終渲染以下情況：
-  // 1. 在公開頁面（如登入頁面）
-  // 2. 已驗證的用戶訪問非公開頁面
-  // 3. 需要 MFA 且在登入頁面
-  // 4. 需要設置新密碼且在設置密碼頁面
-  // 5. 首次登入流程的相關頁面
-  
+  // 以下情況渲染內容:
   const isMfaRequiredFromStorage = 
     typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_required') === 'true';
   const needsMfa = mfaRequired || isMfaRequiredFromStorage;
@@ -140,12 +187,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     (isFirstLogin && currentSetupStep === 'password' && isChangePasswordPage) || // 密碼設置頁面
     (isFirstLogin && currentSetupStep === 'mfa' && isMfaSetupPage); // MFA 設置頁面
 
-  // 以下情況渲染內容:
+  // 簡化渲染條件判斷，減少可能的錯誤
   const shouldRender = 
     isPublicPage || // 公開頁面始終渲染
-    (isAuthenticated && !isPublicPage) || // 已登入用戶訪問非公開頁面
-    (needsMfa && isLoginPage) || // 需要 MFA 且在登入頁面
-    (needsNewPassword && isChangePasswordPage) || // 需要設置新密碼且在設置密碼頁面
+    isAuthenticated || // 已登入用戶
+    needsNewPassword || // 需要設置新密碼
+    needsMfa || // 需要MFA驗證
     isFirstLoginFlowPage; // 首次登入流程的特定頁面
   
   if (!shouldRender) {
@@ -153,7 +200,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       isPublicPage,
       isAuthenticated,
       needsMfa,
-      isLoginPage,
+      isMfaVerificationPage,
       needsNewPassword,
       isChangePasswordPage,
       isFirstLogin,

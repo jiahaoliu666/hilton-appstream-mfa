@@ -88,21 +88,19 @@ export default function ChangePassword() {
     // 檢查是否需要設置新密碼
     const isNewPasswordRequiredFromStorage = localStorage.getItem('cognito_new_password_required') === 'true';
     
+    // 檢查未完成的設置流程
+    const hasUnfinishedSetup = typeof window !== 'undefined' ? 
+      localStorage.getItem('cognito_first_login') === 'true' : false;
+    const savedSetupStep = typeof window !== 'undefined' ? 
+      localStorage.getItem('cognito_setup_step') as string : null;
+    
     // 如果頁面剛加載，等待 loading 完成
     if (loading) return;
     
-    // 如果用戶已經登入且不需要設置新密碼，也沒有儲存需要新密碼的標記，重定向到首頁
-    if (isAuthenticated && !newPasswordRequired && !isNewPasswordRequiredFromStorage && !loading) {
-      router.push('/');
-      return;
-    }
-    
-    // 如果用戶未登入且不需要設置新密碼，也沒有儲存需要新密碼的標記，重定向到登入頁面
-    if (!isAuthenticated && !newPasswordRequired && !isNewPasswordRequiredFromStorage && !loading) {
-      router.push('/login');
-      return;
-    }
-  }, [isAuthenticated, newPasswordRequired, router, loading]);
+    // 簡化檢查邏輯，避免與 ProtectedRoute 衝突
+    // 重要的檢查已經在 ProtectedRoute 組件中處理
+    // 這裡只保留必要的檢查，避免重複邏輯
+  }, [loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,10 +140,21 @@ export default function ChangePassword() {
         }
       } else {
         console.log('密碼設置返回失敗狀態，但沒有拋出錯誤');
+        // 錯誤處理已經在 AuthContext 中進行，這裡不需額外處理
       }
     } catch (err) {
       console.error('設置新密碼時發生未捕獲的錯誤:', err);
-      showError('設置新密碼時發生錯誤，請稍後再試');
+      
+      // 檢查是否是 MFA 相關的錯誤
+      if (err instanceof Error && (err.message.includes('MFA') || err.message.includes('多因素認證'))) {
+        // 這種情況下，密碼可能已經設置成功，只是需要進行 MFA 設置
+        // 延遲一秒後跳轉到 MFA 設置頁面
+        setTimeout(() => {
+          router.push('/mfa-setup');
+        }, 1000);
+      } else {
+        showError('設置新密碼時發生錯誤，請稍後再試');
+      }
     } finally {
       setLoading(false); // 確保無論結果如何都會解除加載狀態
     }

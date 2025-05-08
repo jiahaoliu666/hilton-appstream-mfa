@@ -24,6 +24,7 @@ export default function MfaSetup() {
   const router = useRouter();
   const { 
     isAuthenticated, 
+    loading: authLoading,
     getUserMfaSettings, 
     setupTotpMfa, 
     verifyAndEnableTotpMfa,
@@ -39,12 +40,10 @@ export default function MfaSetup() {
 
   // 在組件掛載時檢查 MFA 設置
   useEffect(() => {
+    // 等待認證狀態加載完成
+    if (authLoading) return;
+    
     const checkMfaSettings = async () => {
-      if (!isAuthenticated) {
-        router.push('/login');
-        return;
-      }
-
       try {
         setLoading(true);
         const result = await getUserMfaSettings();
@@ -64,8 +63,9 @@ export default function MfaSetup() {
       }
     };
 
+    // 只需檢查當前 MFA 設置，路由保護已經由 ProtectedRoute 處理
     checkMfaSettings();
-  }, [isAuthenticated, getUserMfaSettings, router]);
+  }, [isAuthenticated, getUserMfaSettings, router, authLoading]);
 
   // 開始設置 TOTP
   const handleSetupTotpMfa = async () => {

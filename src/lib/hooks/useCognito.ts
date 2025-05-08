@@ -169,12 +169,38 @@ export const useCognito = () => {
               localStorage.setItem('cognito_mfa_required', 'true');
               localStorage.setItem('cognito_mfa_type', 'SELECT_MFA_TYPE');
               localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於 MFA 失敗後重試
+              
+              // 保存可用的MFA選項到localStorage
+              if (challengeParameters && challengeParameters.mfaOptions) {
+                try {
+                  localStorage.setItem('cognito_mfa_options', JSON.stringify(challengeParameters.mfaOptions));
+                } catch (e) {
+                  console.error('無法保存MFA選項到localStorage:', e);
+                }
+              }
             }
             
             resolve({ 
               mfaRequired: true, 
               mfaType: 'SELECT_MFA_TYPE',
               availableMfaTypes: challengeParameters.mfaOptions || [] 
+            });
+          },
+          mfaSetup: (challengeName, challengeParameters) => {
+            console.log('MFA 設置挑戰', challengeName, challengeParameters);
+            setMfaType('SOFTWARE_TOKEN_MFA');
+            setMfaRequired(true);
+            
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_mfa_required', 'true');
+              localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
+              localStorage.setItem('cognito_password', password);
+            }
+            
+            resolve({ 
+              mfaRequired: true, 
+              mfaType: 'SOFTWARE_TOKEN_MFA',
+              setupRequired: true
             });
           }
         });
@@ -438,6 +464,36 @@ export const useCognito = () => {
           onFailure: (err) => {
             console.error('新密碼設置失敗:', err);
             reject(err);
+          },
+          mfaRequired: (challengeName, challengeParameters) => {
+            console.log('需要 MFA 驗證', challengeName);
+            setMfaType('SMS_MFA');
+            setMfaRequired(true);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_mfa_required', 'true');
+              localStorage.setItem('cognito_mfa_type', 'SMS_MFA');
+            }
+            reject(new Error('需要完成 MFA 驗證'));
+          },
+          totpRequired: (challengeName, challengeParameters) => {
+            console.log('需要 TOTP 驗證', challengeName);
+            setMfaType('SOFTWARE_TOKEN_MFA');
+            setMfaRequired(true);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_mfa_required', 'true');
+              localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
+            }
+            reject(new Error('需要完成 TOTP 驗證'));
+          },
+          mfaSetup: (challengeName, challengeParameters) => {
+            console.log('需要設置 MFA', challengeName, challengeParameters);
+            setMfaType('SOFTWARE_TOKEN_MFA');
+            setMfaRequired(true);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_mfa_required', 'true');
+              localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
+            }
+            reject(new Error('需要設置 MFA'));
           }
         });
       });
