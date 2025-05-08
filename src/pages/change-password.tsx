@@ -170,8 +170,25 @@ export default function ChangePassword() {
     // 使用 cancelNewPasswordChallenge 清除狀態和標記
     cancelNewPasswordChallenge();
     
-    // 重定向到登入頁面，不執行任何密碼設置操作
-    router.push('/login');
+    // 確保清除相關localStorage標記
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_first_login');
+      localStorage.removeItem('cognito_setup_step');
+      localStorage.removeItem('cognito_new_password_required');
+      localStorage.removeItem('cognito_username');
+      localStorage.removeItem('cognito_challenge_session');
+      localStorage.removeItem('cognito_password');
+      localStorage.removeItem('cognito_mfa_setup_required');
+      
+      // 設置標記，表明用戶是從密碼設置頁面返回登入頁面的
+      sessionStorage.setItem('returningFromPasswordChange', 'true');
+    }
+    
+    // 延遲一小段時間後再跳轉，確保清理操作完成
+    setTimeout(() => {
+      // 使用 window.location 而不是 router.push 進行強制跳轉
+      window.location.href = '/login';
+    }, 100);
   };
 
   const toggleNewPasswordVisibility = () => {

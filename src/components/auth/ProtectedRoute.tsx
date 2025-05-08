@@ -42,12 +42,35 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     const isReturningFromMfa = 
       typeof window !== 'undefined' && sessionStorage.getItem('returningFromMfa') === 'true';
     
-    // 如果存在標記，清除它並允許返回登入頁面
-    if (isReturningFromMfa && router.pathname === '/login') {
+    // 檢查是否存在從密碼設置頁面返回登入頁面的標記
+    const isReturningFromPasswordChange = 
+      typeof window !== 'undefined' && sessionStorage.getItem('returningFromPasswordChange') === 'true';
+    
+    // 如果存在任一標記，清除它並允許返回登入頁面
+    if ((isReturningFromMfa || isReturningFromPasswordChange) && router.pathname === '/login') {
       sessionStorage.removeItem('returningFromMfa');
+      sessionStorage.removeItem('returningFromPasswordChange');
       return; // 允許繼續訪問登入頁面
     }
 
+    // 從 localStorage 讀取關鍵狀態標記
+    const isFirstLoginFromStorage = typeof window !== 'undefined' ? 
+      localStorage.getItem('cognito_first_login') === 'true' : false;
+    
+    const setupStepFromStorage = typeof window !== 'undefined' ? 
+      localStorage.getItem('cognito_setup_step') as SetupStep : null;
+      
+    const isMfaSetupRequiredFromStorage = typeof window !== 'undefined' ? 
+      localStorage.getItem('cognito_mfa_setup_required') !== 'false' : true;
+
+    // 合併記憶體狀態和 localStorage 狀態
+    const effectiveIsFirstLogin = isFirstLogin || isFirstLoginFromStorage;
+    const effectiveCurrentSetupStep = 
+      (currentSetupStep !== 'complete' && setupStepFromStorage) ? 
+      setupStepFromStorage as SetupStep : 
+      currentSetupStep;
+    const effectiveIsMfaSetupRequired = isMfaSetupRequired || isMfaSetupRequiredFromStorage;
+    
     console.log('ProtectedRoute檢測條件:', {
       path: router.pathname,
       isPublicPage,
@@ -58,7 +81,15 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       newPasswordRequired,
       mfaRequired,
       isFirstLogin,
-      currentSetupStep
+      effectiveIsFirstLogin,
+      currentSetupStep,
+      effectiveCurrentSetupStep,
+      localStorage: {
+        first_login: isFirstLoginFromStorage,
+        setup_step: setupStepFromStorage,
+        mfa_required: localStorage.getItem('cognito_mfa_required'),
+        new_password_required: localStorage.getItem('cognito_new_password_required')
+      }
     });
 
     // 檢查是否需要設置新密碼（從 localStorage 或狀態中獲取）
@@ -93,23 +124,25 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
     
     // 4. 處理首次登入的安全設置流程
-    if (isFirstLogin && isAuthenticated) {
+    if (effectiveIsFirstLogin) {
+      console.log('首次登入流程檢測 - 當前步驟:', effectiveCurrentSetupStep);
+      
       // 如果處於 password 階段，重定向到密碼設置頁面
-      if (currentSetupStep === 'password' && !isChangePasswordPage) {
+      if (effectiveCurrentSetupStep === 'password' && !isChangePasswordPage) {
         console.log('首次登入流程: 密碼階段，重定向到密碼設置頁面');
         router.push(changePasswordPath);
         return;
       }
       
       // 如果已完成密碼設置，處於 mfa 階段，且MFA設置是必須的，重定向到MFA設置頁面
-      if (currentSetupStep === 'mfa' && !isMfaSetupPage && isMfaSetupRequired) {
+      if (effectiveCurrentSetupStep === 'mfa' && !isMfaSetupPage && effectiveIsMfaSetupRequired) {
         console.log('首次登入流程: MFA階段，重定向到MFA設置頁面');
         router.push(mfaSetupPath);
         return;
       }
       
       // 如果已完成全部設置，但仍在設置頁面，重定向到首頁
-      if (currentSetupStep === 'complete' && (isChangePasswordPage || isMfaSetupPage)) {
+      if (effectiveCurrentSetupStep === 'complete' && (isChangePasswordPage || isMfaSetupPage)) {
         console.log('首次登入流程: 設置已完成，重定向到首頁');
         router.push('/');
         return;
@@ -137,15 +170,20 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     
     // 8. 檢查MFA設置狀態 - 只有在非首次登入流程時執行
     // 避免與首次登入流程衝突
-    if (isAuthenticated && !isFirstLogin && !needsMfa && !needsNewPassword) {
+    if (isAuthenticated && !effectiveIsFirstLogin && !needsMfa && !needsNewPassword) {
       const checkMfaStatus = async () => {
         try {
           // 檢查MFA設置狀態
           const mfaResult = await getUserMfaSettings();
           const isMfaEnabled = mfaResult.enabled || false;
           
+          console.log('檢查MFA設置狀態結果:', {
+            isMfaEnabled,
+            isMfaSetupRequired: effectiveIsMfaSetupRequired
+          });
+          
           // 如果MFA設置是必須的，但未設置，且不在MFA設置頁面
-          if (!isMfaEnabled && isMfaSetupRequired && !isMfaSetupPage) {
+          if (!isMfaEnabled && effectiveIsMfaSetupRequired && !isMfaSetupPage) {
             console.log('檢測到MFA未設置，重定向到MFA設置頁面');
             router.push(mfaSetupPath);
           }

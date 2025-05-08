@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { CognitoUser, CognitoUserSession } from 'amazon-cognito-identity-js';
 import { useCognito, MFAType } from '@/lib/hooks/useCognito';
 import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
@@ -464,13 +464,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('AuthContext: 開始處理完成新密碼設置...');
       const result = await cognitoCompleteNewPassword(newPassword);
       
-      if (result.success && result.session) {
-        console.log('AuthContext: 新密碼設置成功，保存令牌...');
-        // 保存令牌
-        await saveTokenToStorage(result.session);
+      if (result.success) {
+        console.log('AuthContext: 新密碼設置成功！');
         
-        setIsAuthenticated(true);
-        setUser(getCurrentUser());
+        // 如果有會話，保存令牌
+        if (result.session) {
+          await saveTokenToStorage(result.session);
+          setIsAuthenticated(true);
+          setUser(getCurrentUser());
+        }
         
         // 清除需要新密碼的標記
         if (typeof window !== 'undefined') {
@@ -478,23 +480,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.removeItem('cognito_password');
         }
         
+        // 檢查是否是首次登入流程
+        const isFirst = typeof window !== 'undefined' ? 
+          localStorage.getItem('cognito_first_login') === 'true' : isFirstLogin;
+          
+        const currentStep = typeof window !== 'undefined' ? 
+          localStorage.getItem('cognito_setup_step') as SetupStep || currentSetupStep : currentSetupStep;
+        
+        console.log('AuthContext: 檢查首次登入狀態:', { isFirst, currentStep });
+        
         // 如果是首次登入流程，且設置了新密碼，更新進度到MFA設置階段
-        if (isFirstLogin && currentSetupStep === 'password') {
+        if ((isFirst || isFirstLogin) && (currentStep === 'password' || currentSetupStep === 'password')) {
+          // 更新首次登入標記為真
+          setIsFirstLogin(true);
+          
           if (isMfaSetupRequired) {
-            console.log('密碼設置成功，進入MFA設置階段');
+            console.log('AuthContext: 密碼設置成功，進入MFA設置階段');
+            // 設置步驟為 MFA
             setCurrentSetupStep('mfa');
             
             // 保存到localStorage，確保MFA設置標記已設置
             if (typeof window !== 'undefined') {
               localStorage.setItem('cognito_setup_step', 'mfa');
               localStorage.setItem('cognito_mfa_setup_required', 'true');
-              // 標記為首次登入，確保導航邏輯正確
               localStorage.setItem('cognito_first_login', 'true');
             }
+            
+            // 延遲一秒後跳轉到 MFA 設置頁面
+            showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
+            setTimeout(() => {
+              router.push('/mfa-setup');
+            }, 1500);
           } else {
-            console.log('密碼設置成功，MFA設置已跳過，設置流程完成');
+            console.log('AuthContext: 密碼設置成功，MFA設置已跳過，設置流程完成');
             completeSetup();
+            
+            // 延遲一秒後跳轉到首頁
+            showInfo('密碼已設置成功，即將跳轉到首頁...');
+            setTimeout(() => {
+              router.push('/');
+            }, 1500);
           }
+        } else {
+          // 非首次登入流程，直接跳轉到首頁
+          showSuccess('密碼設置成功');
+          setTimeout(() => {
+            router.push('/');
+          }, 1000);
         }
         
         // 立即檢查MFA設置狀態
@@ -504,17 +536,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       // 如果設置失敗，但沒有拋出錯誤，顯示通用錯誤訊息
-      if (!result.success) {
-        console.log('AuthContext: 設置新密碼失敗，但沒有錯誤訊息');
-        showError('無法設置新密碼，請重新登入後再試');
-        
-        // 如果是特定錯誤，清除狀態並重新登入
-        setTimeout(() => {
-          cognitoCancelNewPasswordChallenge();
-          // 重定向到登入頁面
-          router.push('/login');
-        }, 1500);
-      }
+      console.log('AuthContext: 設置新密碼失敗，但沒有錯誤訊息');
+      showError('無法設置新密碼，請重新登入後再試');
+      
+      // 如果是特定錯誤，清除狀態並重新登入
+      setTimeout(() => {
+        cognitoCancelNewPasswordChallenge();
+        // 重定向到登入頁面
+        router.push('/login');
+      }, 1500);
       
       return false;
     } catch (error) {
@@ -597,6 +627,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('cognito_mfa_type');
       localStorage.removeItem('cognito_mfa_enabled');
       localStorage.removeItem('cognito_mfa_options');
+      localStorage.removeItem('cognito_password');
     }
   };
 
@@ -620,6 +651,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 合併加載狀態
   const loading = authLoading || cognitoLoading;
 
+  // 專門處理取消新密碼挑戰
+  const handleCancelNewPasswordChallenge = useCallback(() => {
+    // 首先調用 Cognito Hook 的取消函數
+    cognitoCancelNewPasswordChallenge();
+    
+    // 同步更新 AuthContext 的狀態
+    setIsFirstLogin(false);
+    setCurrentSetupStep('password');
+    setIsMfaSetupRequired(true);
+  }, [cognitoCancelNewPasswordChallenge]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -632,7 +674,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         error: cognitoError,
         getToken: handleGetToken,
         newPasswordRequired: cognitoNewPasswordRequired,
-        cancelNewPasswordChallenge: cognitoCancelNewPasswordChallenge,
+        cancelNewPasswordChallenge: handleCancelNewPasswordChallenge,
         // MFA 相關
         mfaRequired: cognitoMfaRequired,
         mfaType: cognitoMfaType,

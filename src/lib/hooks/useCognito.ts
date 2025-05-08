@@ -393,72 +393,21 @@ export const useCognito = () => {
       let userToComplete = currentCognitoUser;
 
       if (!username || !userToComplete) {
+        console.error('無法完成密碼設置：會話已過期或用戶資訊缺失');
         throw new Error('會話已過期，請重新登入後再設置新密碼');
       }
 
-      // 如果需要重新認證，使用儲存的密碼和用戶名
-      if (!userToComplete.getSignInUserSession() && password) {
-        try {
-          console.log('嘗試重新進行身份驗證獲取新會話...');
-          
-          const authenticationDetails = new AuthenticationDetails({
-            Username: username,
-            Password: password
-          });
-
-          const newCognitoUser = new CognitoUser({
-            Username: username,
-            Pool: userPool
-          });
-
-          // 重新進行身份驗證，確保有新的有效會話
-          await new Promise<void>((resolve, reject) => {
-            newCognitoUser.authenticateUser(authenticationDetails, {
-              onSuccess: () => {
-                reject(new Error('用戶已經成功登入，不需要再設置新密碼'));
-              },
-              onFailure: (err) => {
-                reject(err);
-              },
-              newPasswordRequired: (userAttrs) => {
-                // 更新為新的用戶實例
-                userToComplete = newCognitoUser;
-                setCurrentCognitoUser(newCognitoUser);
-                resolve();
-              }
-            });
-          });
-        } catch (authError: any) {
-          console.error('重新認證失敗:', authError);
-          
-          if (authError.message === '用戶已經成功登入，不需要再設置新密碼') {
-            // 用戶可能在其他標籤頁已完成密碼設置，可以直接重定向到首頁
-            setNewPasswordRequired(false);
-            
-            // 清除需要新密碼的標記
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('cognito_new_password_required');
-              localStorage.removeItem('cognito_username');
-              localStorage.removeItem('cognito_password');
-              localStorage.removeItem('cognito_challenge_session');
-            }
-            
-            return { success: true };
-          }
-          
-          throw new Error('無法恢復會話，請重新登入: ' + authError.message);
-        }
-      }
+      console.log('準備設置新密碼，用戶名:', username);
 
       // 設置新密碼
       console.log('開始完成新密碼設置...');
-      const session = await new Promise<CognitoUserSession>((resolve, reject) => {
+      const session = await new Promise<CognitoUserSession | null>((resolve, reject) => {
         // 過濾不需要的屬性，以避免 Cognito API 的錯誤
         const filteredAttributes: any = {};
         
         userToComplete!.completeNewPasswordChallenge(newPassword, filteredAttributes, {
           onSuccess: (session) => {
-            console.log('新密碼設置成功');
+            console.log('新密碼設置成功！');
             resolve(session);
           },
           onFailure: (err) => {
@@ -466,68 +415,95 @@ export const useCognito = () => {
             reject(err);
           },
           mfaRequired: (challengeName, challengeParameters) => {
-            console.log('需要 MFA 驗證', challengeName);
+            console.log('需要 MFA 驗證', challengeName, challengeParameters);
             setMfaType('SMS_MFA');
             setMfaRequired(true);
             if (typeof window !== 'undefined') {
               localStorage.setItem('cognito_mfa_required', 'true');
               localStorage.setItem('cognito_mfa_type', 'SMS_MFA');
             }
-            reject(new Error('需要完成 MFA 驗證'));
+            resolve(null); // 不是錯誤，但沒有會話
           },
           totpRequired: (challengeName, challengeParameters) => {
-            console.log('需要 TOTP 驗證', challengeName);
+            console.log('需要 TOTP 驗證', challengeName, challengeParameters);
             setMfaType('SOFTWARE_TOKEN_MFA');
             setMfaRequired(true);
             if (typeof window !== 'undefined') {
               localStorage.setItem('cognito_mfa_required', 'true');
               localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
             }
-            reject(new Error('需要完成 TOTP 驗證'));
+            resolve(null); // 不是錯誤，但沒有會話
           },
           mfaSetup: (challengeName, challengeParameters) => {
             console.log('需要設置 MFA', challengeName, challengeParameters);
+            // 關鍵修改：標記為需要MFA設置
             setMfaType('SOFTWARE_TOKEN_MFA');
             setMfaRequired(true);
             if (typeof window !== 'undefined') {
+              // 確保MFA狀態正確儲存
               localStorage.setItem('cognito_mfa_required', 'true');
               localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
+              // 重要：明確標記為首次登入且處於MFA設置階段
+              localStorage.setItem('cognito_first_login', 'true');
+              localStorage.setItem('cognito_setup_step', 'mfa');
+              localStorage.setItem('cognito_mfa_setup_required', 'true');
             }
-            reject(new Error('需要設置 MFA'));
+            resolve(null); // 不是錯誤，但沒有會話
           }
         });
       });
 
-      setNewPasswordRequired(false);
-      setCurrentCognitoUser(null);
-      setUserAttributes(null);
-      
-      // 清除需要新密碼的標記，特別注意要清除密碼
+      // 清除需要新密碼的標記，因為密碼已設置
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cognito_new_password_required');
-        localStorage.removeItem('cognito_username');
-        localStorage.removeItem('cognito_password'); // 重要：清除密碼
-        localStorage.removeItem('cognito_challenge_session');
+        localStorage.removeItem('cognito_password');
       }
-      
-      showSuccess('密碼設置成功，即將跳轉到首頁');
+
+      // 處理沒有會話但需要MFA的情況
+      if (!session) {
+        console.log('密碼已成功設置，但需要進行MFA設置或驗證');
+        // 這種情況視為成功，讓路由邏輯處理後續MFA流程
+        return { success: true };
+      }
+
+      // 如果有會話，表示整個流程已完成
+      console.log('新密碼設置完成，並獲得有效會話');
+      showSuccess('密碼設置成功!');
       return { success: true, session };
     } catch (err) {
-      const cognitoError = err as CognitoError;
+      const cognitoError = err as Error;
       let errorMessage = '設置新密碼過程發生錯誤';
+
+      console.error('completeNewPassword 錯誤詳情:', cognitoError);
       
-      if (cognitoError.message) {
-        if (cognitoError.message.includes('Invalid session')) {
-          errorMessage = '會話無效，請重新登入後再設置新密碼';
-        } else if (cognitoError.message.includes('Password does not conform')) {
-          errorMessage = '密碼不符合安全要求，請確保符合所有條件';
-        } else {
-          errorMessage = cognitoError.message;
+      // 額外檢查 MFA 相關錯誤
+      if (cognitoError.message && (
+          cognitoError.message.includes('MFA') || 
+          cognitoError.message.includes('TOTP') ||
+          cognitoError.message.includes('多因素認證'))) {
+        console.log('發現MFA相關錯誤，這可能表示密碼已設置成功但需要設置MFA');
+        
+        // 標記為需要MFA設置
+        setMfaRequired(true);
+        setMfaType('SOFTWARE_TOKEN_MFA');
+        
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cognito_mfa_required', 'true');
+          localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
+          // 明確標記為首次登入且處於MFA設置階段
+          localStorage.setItem('cognito_first_login', 'true');
+          localStorage.setItem('cognito_setup_step', 'mfa');
+          localStorage.setItem('cognito_mfa_setup_required', 'true');
+          // 清除新密碼標記
+          localStorage.removeItem('cognito_new_password_required');
         }
+        
+        // 返回成功，讓路由邏輯處理MFA設置
+        return { success: true };
       }
-      
+
       setError(errorMessage);
-      showError(errorMessage);
+      showError(errorMessage + ': ' + cognitoError.message);
       return { success: false };
     } finally {
       setLoading(false);
@@ -563,6 +539,12 @@ export const useCognito = () => {
       localStorage.removeItem('cognito_new_password_required');
       localStorage.removeItem('cognito_username');
       localStorage.removeItem('cognito_challenge_session');
+      localStorage.removeItem('cognito_password');
+      
+      // 清除首次登入流程相關標記
+      localStorage.removeItem('cognito_first_login');
+      localStorage.removeItem('cognito_setup_step');
+      localStorage.removeItem('cognito_mfa_setup_required');
     }
   }, []);
 
