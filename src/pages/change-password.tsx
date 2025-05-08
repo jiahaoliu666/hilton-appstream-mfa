@@ -33,6 +33,8 @@ export default function ChangePassword() {
     const hasNumbers = /\d/.test(newPassword);
     const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
     const passwordsMatch = newPassword === confirmNewPassword && confirmNewPassword.length > 0;
+    // 新增：檢查密碼是否只包含允許的字符（英文字母、數字和特定的特殊字符）
+    const onlyAllowedChars = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/.test(newPassword);
 
     return {
       hasMinLength,
@@ -40,19 +42,20 @@ export default function ChangePassword() {
       hasLowerCase,
       hasNumbers,
       hasSpecialChar,
-      passwordsMatch
+      passwordsMatch,
+      onlyAllowedChars
     };
   }, [newPassword, confirmNewPassword]);
 
   // 檢查所有密碼條件是否都滿足
   const allConditionsMet = useMemo(() => {
-    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar, passwordsMatch } = passwordChecks;
-    return hasMinLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && passwordsMatch;
+    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar, passwordsMatch, onlyAllowedChars } = passwordChecks;
+    return hasMinLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && passwordsMatch && onlyAllowedChars;
   }, [passwordChecks]);
 
   // 計算密碼強度
   const passwordStrength = useMemo(() => {
-    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar } = passwordChecks;
+    const { hasMinLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar, onlyAllowedChars } = passwordChecks;
     
     let score = 0;
     if (hasMinLength) score += 1;
@@ -60,24 +63,24 @@ export default function ChangePassword() {
     if (hasLowerCase) score += 1;
     if (hasNumbers) score += 1;
     if (hasSpecialChar) score += 1;
+    if (onlyAllowedChars) score += 1;
     
     if (newPassword.length > 12) score += 1;
     
-    // 最低分數為0，最高分數為6
+    // 最低分數為0，最高分數為7
     return {
       score,
-      percent: (score / 6) * 100,
+      percent: (score / 7) * 100,
       text: score === 0 ? '非常弱' : 
             score === 1 ? '弱' : 
             score === 2 ? '弱' : 
             score === 3 ? '中等' : 
-            score === 4 ? '強' : 
-            score === 5 ? '很強' : '非常強',
-      color: score === 0 || score === 1 ? '#ff4d4f' : 
-             score === 2 ? '#faad14' : 
-             score === 3 ? '#faad14' : 
-             score === 4 ? '#52c41a' : 
-             score === 5 ? '#52c41a' : '#389e0d'
+            score === 4 ? '中等' : 
+            score === 5 ? '強' : 
+            score === 6 ? '很強' : '非常強',
+      color: score < 2 ? '#ff4d4f' : 
+             score < 4 ? '#faad14' : 
+             score < 6 ? '#52c41a' : '#389e0d'
     };
   }, [passwordChecks, newPassword]);
 
@@ -111,7 +114,7 @@ export default function ChangePassword() {
 
     // 檢查密碼是否符合所有要求
     if (!allConditionsMet) {
-      showError('請檢查密碼是否符合所有條件');
+      showError('請檢查新密碼是否符合所有條件');
       return;
     }
 
@@ -441,7 +444,27 @@ export default function ChangePassword() {
                     </span>
                     至少一個特殊字符 (!@#$%^&*等)
                   </li>
-                  {/* 新增密碼一致性檢查 */}
+                  {/* 新增：只允許使用英文字母、數字和特殊字符，不允許中文等其他字符 */}
+                  <li style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    marginBottom: '0.25rem',
+                    color: passwordChecks.onlyAllowedChars ? '#52c41a' : '#8c8c8c'
+                  }}>
+                    <span style={{ marginRight: '0.5rem' }}>
+                      {passwordChecks.onlyAllowedChars ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                      )}
+                    </span>
+                    僅限英文字母、數字和特殊字符 (不允許中文等其他字符)
+                  </li>
+                  {/* 密碼一致性檢查 */}
                   <li style={{ 
                     display: 'flex', 
                     alignItems: 'center',

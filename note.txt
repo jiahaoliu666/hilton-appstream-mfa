@@ -5,6 +5,8 @@ hilton-appstream-mfa/
 │   │   └── auth/
 │   │       ├── AuthContext.tsx      # AWS Cognito 身份驗證上下文
 │   │       └── ProtectedRoute.tsx   # 路由保護組件
+│   ├── common/
+│   │       ├── SetupProgressIndicator.tsx # 更改密碼、MFA驗證進度指示器
 │   ├── lib/
 │   │   ├── api/
 │   │   │   └── apiClient.ts         # API 客戶端與認證攔截器
