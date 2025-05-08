@@ -88,6 +88,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true; // 預設值為true，表示需要設置MFA
   });
   
+  // 新增一個MFA已啟用的狀態，緩存MFA狀態避免頻繁API調用
+  const [isMfaEnabled, setIsMfaEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cognito_mfa_enabled') === 'true';
+    }
+    return false;
+  });
+  
   const {
     signIn,
     signOut,
@@ -144,7 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // localStorage.removeItem('cognito_access_token');
   };
 
-  // 在組件掛載時檢查用戶的身份驗證狀態
+  // 在組件掛載時檢查用戶的身份驗證狀態和MFA設置
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
@@ -159,6 +167,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             setIsAuthenticated(true);
             setUser(currentUser);
+            
+            // 檢查MFA設置狀態
+            handleGetUserMfaSettings().catch(console.error);
           } else {
             // 如果會話無效，則登出
             handleLogout();
@@ -347,7 +358,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 獲取用戶 MFA 設置
   const handleGetUserMfaSettings = async () => {
     try {
-      return await cognitoGetUserMfaSettings();
+      const result = await cognitoGetUserMfaSettings();
+      
+      // 如果成功獲取MFA設置，更新本地狀態和存儲
+      if (result.success) {
+        const isEnabled = result.enabled || false;
+        setIsMfaEnabled(isEnabled);
+        
+        // 同步到localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cognito_mfa_enabled', isEnabled.toString());
+        }
+      }
+      
+      return result;
     } catch (error) {
       console.error('Get MFA settings error:', error);
       return { success: false };
@@ -369,9 +393,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const result = await cognitoVerifyAndEnableTotpMfa(totpCode, deviceName);
       
-      // 如果是首次登入流程，且已完成MFA設置
-      if (result.success && isFirstLogin && currentSetupStep === 'mfa') {
-        completeSetup();
+      if (result.success) {
+        // 更新MFA啟用狀態
+        setIsMfaEnabled(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cognito_mfa_enabled', 'true');
+        }
+      
+        // 如果是首次登入流程，且已完成MFA設置
+        if (isFirstLogin && currentSetupStep === 'mfa') {
+          completeSetup();
+        }
       }
       
       return result.success;
@@ -386,9 +418,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const result = await cognitoSetupSmsMfa();
       
-      // 如果是首次登入流程，且已完成MFA設置
-      if (result.success && isFirstLogin && currentSetupStep === 'mfa') {
-        completeSetup();
+      if (result.success) {
+        // 更新MFA啟用狀態
+        setIsMfaEnabled(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cognito_mfa_enabled', 'true');
+        }
+        
+        // 如果是首次登入流程，且已完成MFA設置
+        if (isFirstLogin && currentSetupStep === 'mfa') {
+          completeSetup();
+        }
       }
       
       return result.success;
@@ -402,6 +442,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const handleDisableMfa = async (): Promise<boolean> => {
     try {
       const result = await cognitoDisableMfa();
+      
+      if (result.success) {
+        // 更新MFA禁用狀態
+        setIsMfaEnabled(false);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cognito_mfa_enabled', 'false');
+        }
+      }
+      
       return result.success;
     } catch (error) {
       console.error('Disable MFA error:', error);
@@ -439,6 +488,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } else {
             completeSetup();
           }
+          
+          // 立即檢查MFA設置狀態
+          handleGetUserMfaSettings().catch(console.error);
         }
         
         return true;
@@ -515,12 +567,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
     setUser(null);
     
-    // 清除首次登入狀態
+    // 清除所有狀態
     setIsFirstLogin(false);
     setCurrentSetupStep('password');
+    setIsMfaEnabled(false);
+    
     if (typeof window !== 'undefined') {
+      // 清除所有相關localStorage項
       localStorage.removeItem('cognito_first_login');
       localStorage.removeItem('cognito_setup_step');
+      localStorage.removeItem('cognito_new_password_required');
+      localStorage.removeItem('cognito_username');
+      localStorage.removeItem('cognito_challenge_session');
+      localStorage.removeItem('cognito_mfa_required');
+      localStorage.removeItem('cognito_mfa_type');
+      localStorage.removeItem('cognito_mfa_enabled');
+      localStorage.removeItem('cognito_mfa_options');
     }
   };
 
