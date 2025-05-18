@@ -26,7 +26,8 @@ export default function Login() {
     mfaRequired,
     mfaType,
     verifyMfaCode,
-    selectMfaType
+    selectMfaType,
+    getUserMfaSettings
   } = useAuth();
 
   // 簡化檢查邏輯，避免與 ProtectedRoute 衝突
@@ -52,7 +53,13 @@ export default function Login() {
       const result = await login(username, password);
       
       if (result.mfaRequired) {
-        // 直接顯示錯誤或提示，不再跳轉 mfa-verification
+        // 如果是 Cognito 的 MFA_SETUP 挑戰，直接導向 MFA 設置頁面
+        if (result.mfaType === 'SOFTWARE_TOKEN_MFA') {
+          // 只導向，不 showInfo，避免重複提示
+          router.push('/mfa-setup');
+          return;
+        }
+        // 其他情況才顯示錯誤
         showError('此帳號已啟用 MFA，請聯繫管理員或重設帳號。');
         return;
       }
@@ -63,14 +70,18 @@ export default function Login() {
       }
       
       if (result.success) {
-        if (result.needsMfaSetup) {
-          // 如果是初次使用新密碼登入且未設置 MFA，重定向到設置頁面
-          showInfo('請完成多因素認證(MFA)設置，以增強您的帳戶安全性。');
-          router.push('/mfa-setup');
-        } else {
-          // 如果不需要設置 MFA，直接進入首頁
-          router.push('/');
+        // 強制檢查 MFA 狀態
+        if (typeof window !== 'undefined') {
+          getUserMfaSettings().then((mfaSettings: any) => {
+            if (!mfaSettings.enabled) {
+              // 只導向，不 showInfo，避免重複提示
+              router.push('/mfa-setup');
+            } else {
+              router.push('/');
+            }
+          });
         }
+        return;
       }
     } catch (error) {
       console.error('Login error:', error);

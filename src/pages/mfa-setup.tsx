@@ -44,63 +44,58 @@ export default function MfaSetup() {
 
   // 在組件掛載時檢查 MFA 設置
   useEffect(() => {
-    // 等待認證狀態加載完成
     if (authLoading) return;
-    
-    // 檢查是否來自密碼變更頁面
+
+    // 僅在真正需要設置 MFA 時顯示提示，且只顯示一次
     if (typeof window !== 'undefined') {
-      const fromPasswordChange = localStorage.getItem('from_password_change') === 'true';
-      setIsFromPasswordChange(fromPasswordChange);
-      
-      // 如果是從密碼變更頁面而來，顯示特別的提示信息
-      if (fromPasswordChange) {
+      // 僅在首次進入且未設置 MFA 狀態時顯示
+      const mfaToastKey = 'mfa_setup_info_shown';
+      if (!(window as any).__mfaSetupToastShown && (!mfaSettings.enabled || (isFirstLogin && currentSetupStep === 'mfa'))) {
+        (window as any).__mfaSetupToastShown = true;
         showInfo('請完成多因素認證(MFA)設置，以增強您的帳戶安全性。');
       }
-      
-      // 檢查是否是首次登入且正在進行 MFA 設置階段
-      if (isFirstLogin && currentSetupStep === 'mfa') {
-        // 顯示歡迎提示，告知用戶需要完成MFA設置
-        showInfo('歡迎！請完成多因素認證(MFA)設置，以增強您的帳戶安全性。');
-      }
+      setIsFromPasswordChange(localStorage.getItem('from_password_change') === 'true');
     }
-    
-    const checkMfaSettings = async () => {
-      try {
-        setLoading(true);
-        const result = await getUserMfaSettings();
-        
-        if (result.success) {
-          setMfaSettings({
-            enabled: result.enabled || false,
-            preferredMfa: result.preferredMfa,
-            mfaOptions: result.mfaOptions || []
-          });
-          
-          // 如果MFA已經啟用，但用戶還在首次登入流程中，自動完成設置
-          if (result.enabled && isFirstLogin && currentSetupStep === 'mfa') {
-            showSuccess('MFA已設置完成！');
-            completeSetup();
-            
-            // 清除密碼變更標記
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('from_password_change');
-            }
-            
-            // 延遲一秒後跳轉到首頁
-            setTimeout(() => {
-              router.push('/');
-            }, 1500);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to get MFA settings:', error);
-        showError('獲取 MFA 設置失敗');
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    checkMfaSettings();
+    // 僾在已登入或 MFA 設置流程已完成時才查詢 MFA 狀態
+    if (isAuthenticated || (isFirstLogin && currentSetupStep === 'complete')) {
+      const checkMfaSettings = async () => {
+        try {
+          setLoading(true);
+          const result = await getUserMfaSettings();
+          
+          if (result.success) {
+            setMfaSettings({
+              enabled: result.enabled || false,
+              preferredMfa: result.preferredMfa,
+              mfaOptions: result.mfaOptions || []
+            });
+            
+            // 如果MFA已經啟用，但用戶還在首次登入流程中，自動完成設置
+            if (result.enabled && isFirstLogin && currentSetupStep === 'mfa') {
+              showSuccess('MFA已設置完成！');
+              completeSetup();
+              
+              // 清除密碼變更標記
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('from_password_change');
+              }
+              
+              // 延遲一秒後跳轉到首頁
+              setTimeout(() => {
+                router.push('/');
+              }, 1500);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to get MFA settings:', error);
+          showError('獲取 MFA 設置失敗');
+        } finally {
+          setLoading(false);
+        }
+      };
+      checkMfaSettings();
+    }
 
     if (mfaSettings.enabled) {
       // MFA 已啟用，直接導向驗證頁面
