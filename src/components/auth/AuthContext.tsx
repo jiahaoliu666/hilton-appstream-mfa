@@ -151,8 +151,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('cognito_id_token');
       localStorage.removeItem('cognito_access_token');
       localStorage.removeItem('cognito_refresh_token');
-      localStorage.removeItem('cognito_first_login');
-      localStorage.removeItem('cognito_setup_step');
       localStorage.removeItem('cognito_new_password_required');
       localStorage.removeItem('cognito_mfa_required');
       localStorage.removeItem('cognito_mfa_type');
@@ -589,8 +587,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('cognito_id_token');
       localStorage.removeItem('cognito_access_token');
       localStorage.removeItem('cognito_refresh_token');
-      localStorage.removeItem('cognito_first_login');
-      localStorage.removeItem('cognito_setup_step');
       localStorage.removeItem('cognito_new_password_required');
       localStorage.removeItem('cognito_mfa_required');
       localStorage.removeItem('cognito_mfa_type');
@@ -599,7 +595,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('cognito_password');
       localStorage.removeItem('cognito_mfa_verified'); // 清除 MFA 驗證狀態
     }
-    
     // 調用 Cognito 的登出函數
     signOut();
   }, [signOut]);

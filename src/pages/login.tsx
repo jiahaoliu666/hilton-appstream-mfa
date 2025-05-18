@@ -57,6 +57,8 @@ export default function Login() {
         // 如果是 Cognito 的 MFA_SETUP 挑戰，設置 localStorage 並強制刷新跳轉
         if (result.mfaType === 'SOFTWARE_TOKEN_MFA') {
           if (typeof window !== 'undefined') {
+            localStorage.setItem('cognito_first_login', 'true');
+            localStorage.setItem('cognito_setup_step', 'mfa');
             localStorage.setItem('cognito_mfa_setup_required', 'true');
             window.location.replace('/mfa-setup');
           }
@@ -79,6 +81,8 @@ export default function Login() {
         if (typeof window !== 'undefined') {
           getUserMfaSettings().then((mfaSettings: any) => {
             if (!mfaSettings.enabled) {
+              localStorage.setItem('cognito_first_login', 'true');
+              localStorage.setItem('cognito_setup_step', 'mfa');
               localStorage.setItem('cognito_mfa_setup_required', 'true');
               setRedirecting(true);
               window.location.replace('/mfa-setup');

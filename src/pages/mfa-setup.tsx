@@ -46,6 +46,11 @@ export default function MfaSetup() {
   useEffect(() => {
     if (authLoading) return;
 
+    // 強制設置 setup_step 為 mfa，避免被導回 login
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cognito_setup_step', 'mfa');
+    }
+
     // 僅在真正需要設置 MFA 時顯示提示，且只顯示一次
     if (typeof window !== 'undefined') {
       // 僅在首次進入且未設置 MFA 狀態時顯

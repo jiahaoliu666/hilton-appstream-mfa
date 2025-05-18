@@ -39,6 +39,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const mfaEnabled = typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_enabled') === 'true';
 
   useEffect(() => {
+    // 只要在 mfa-setup 頁面且 localStorage 有 flag，完全不做 redirect
+    if (
+      typeof window !== 'undefined' &&
+      router.pathname === '/mfa-setup' &&
+      localStorage.getItem('cognito_mfa_setup_required') === 'true'
+    ) {
+      return;
+    }
     // 如果正在加載身份驗證狀態，不執行任何重定向
     if (loading) return;
 
@@ -188,19 +196,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const isMfaSetupRequiredFromStorage =
     typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_setup_required') === 'true';
 
-  // 首次登入流程頁面檢查
+  // 首次登入流程頁面檢查（直接用 localStorage 判斷）
+  const isFirstLoginFromStorage = typeof window !== 'undefined' ? 
+    localStorage.getItem('cognito_first_login') === 'true' : false;
+  const setupStepFromStorage = typeof window !== 'undefined' ? 
+    localStorage.getItem('cognito_setup_step') : null;
+
   const isFirstLoginFlowPage = 
-    (isFirstLogin && currentSetupStep === 'password' && isChangePasswordPage) || // 密碼設置頁面
-    (isFirstLogin && currentSetupStep === 'mfa' && isMfaSetupPage); // MFA 設置頁面
+    (isFirstLoginFromStorage && setupStepFromStorage === 'password' && isChangePasswordPage) ||
+    (isFirstLoginFromStorage && setupStepFromStorage === 'mfa' && isMfaSetupPage);
 
   // 簡化渲染條件判斷，減少可能的錯誤
   const shouldRender = 
+    (isMfaSetupPage && isMfaSetupRequiredFromStorage) || // 最高優先
     isPublicPage || // 公開頁面始終渲染
     isAuthenticated || // 已登入用戶
     needsNewPassword || // 需要設置新密碼
     needsMfa || // 需要MFA驗證
-    isFirstLoginFlowPage || // 首次登入流程的特定頁面
-    (isMfaSetupPage && isMfaSetupRequiredFromStorage); // <--- 新增這行
+    isFirstLoginFlowPage; // 首次登入流程的特定頁面
   
   if (!shouldRender) {
     console.log('Protected route not rendering, conditions:', {

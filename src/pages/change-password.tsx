@@ -122,18 +122,15 @@ export default function ChangePassword() {
       
       if (success) {
         console.log('密碼設置成功，準備重定向...');
-        showSuccess('密碼設置成功，請重新登入');
-        // 清除首次登入與 setup 標記
+        showSuccess('密碼設置成功，請繼續設置多因素認證(MFA)');
+        // 設定首次登入流程進入 mfa 階段
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('cognito_first_login');
-          localStorage.removeItem('cognito_setup_step');
-          localStorage.removeItem('cognito_mfa_setup_required');
-          localStorage.removeItem('cognito_new_password_required');
-          localStorage.removeItem('cognito_password');
-          localStorage.removeItem('cognito_username');
+          localStorage.setItem('cognito_first_login', 'true');
+          localStorage.setItem('cognito_setup_step', 'mfa');
+          localStorage.setItem('cognito_mfa_setup_required', 'true');
         }
         setTimeout(() => {
-          router.push('/login');
+          router.push('/mfa-setup');
         }, 1200);
         return;
       } else {
