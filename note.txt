@@ -51,3 +51,124 @@ constants.ts # 常量
 集中管理所有路徑常量
 使代碼更容易維護和修改
 ===============================================
+
+
+
+
+------------
+
+localhost:3000/change-password
+
+jiahaoliu@metaage.com.tw
+
+haoder7416@gmail.com
+@Qaz12345
+
+------------
+我要做一個使用 AWS Amplify 和 Next.js 開發的應用程式，專門用於訪問 Amazon AppStream 2.0 服務。此應用程式要具有以下特點：
+
+1. 前端使用 Next.js 框架開發，提供登入頁面，並且串接 Cognito 做登入驗證
+2. 登入驗證成功後要讓用戶重新更改新密碼
+3. 更改新密碼後也串接 Cognito要讓用戶綁定 MFA
+4. 更改新密碼和綁定 MFA 後重定向到登入介面
+5. 用戶使用新的密碼登入，並透過 MFA 成功驗證
+6. MFA 成功驗證後要進入主要的應用程式頁面
+7. 應用程式頁面當中有專門用於訪問 Amazon AppStream 2.0 服務按鈕，並提供兩種使用模式：
+Web 模式：通過瀏覽器直接訪問 AppStream 虛擬桌面
+APP 模式：自動生成 AppStream 串流 URL 並自動啟用 Amazon AppStream 客戶端應用程式
+
+根據此專案如何進行 AWS 估價
+------------
+
+我要做一個使用 AWS Amplify 和 Next.js 開發的多因素認證 (MFA) 應用程式，專門用於訪問 Amazon AppStream 2.0 服務。此應用程式要具有以下特點：
+
+1. 它使用 AWS Amplify 提供的認證服務，配置為必須使用多因素認證 (MFA)，包括基於時間的一次性密碼 (TOTP)。
+
+2. 前端使用 Next.js 框架開發，提供了登入頁面，支持用戶通過 Web 模式或 APP 模式訪問 Amazon AppStream 2.0 虛擬桌面。
+
+3. 當用戶通過多因素認證後，應用會從 AWS Cognito 獲取臨時憑證，然後使用這些憑證生成 Amazon AppStream 2.0 的串流 URL。
+
+4. Amazon AppStream 2.0 應用提供兩種使用模式：
+Web 模式：通過瀏覽器直接訪問 AppStream 虛擬桌面
+APP 模式：通過 Amazon AppStream 客戶端應用程式訪問，會自動複製串流 URL 到剪貼簿
+項目包含多個 API 端點，用於獲取憑證和生成 AppStream 串流 URL。
+總的來說，這是一個爲 Amazon AppStream 2.0 虛擬桌面服務提供嚴格多因素認證的安全登入門戶的應用程式。
+
+------------
+
+我要在 Next.js 應用中實作使用者登入功能，介面在login.tsx中，包含用戶名和密碼欄位。請提供使用 AWS SDK for JavaScript v3 整合 AWS Cognito 進行身份驗證的最佳實踐方式，並符合 Next.js 框架的架構原則和效能最佳化要求。
+
+------------
+
+我要做一個使用 AWS Amplify 和 Next.js 前端開發的多因素認證 (MFA) 應用程式，專門用於訪問 Amazon AppStream 2.0 服務。
+
+幫我根據以下項目製作簡潔有力的目錄結構：
+1. 首頁是登入介面 (使用 Next.js 前端)
+2. 登入後要有 MFA 驗證的機制和頁面 (使用 Next.js 前端結合 Cognito 服務)
+3. 成功登入後要進入到另外一個 Amazon AppStream 2.0 的頁面，此頁面要具有
+Web 模式：通過瀏覽器直接訪問 AppStream 虛擬桌面
+APP 模式：通過 Amazon AppStream 客戶端應用程式訪問，會自動複製串流 URL 到剪貼簿
+項目包含多個 API 端點，用於獲取憑證和生成 AppStream 串流 URL。
+以上兩種的功能使用 AWS SDK for JavaScript v3 
+
+---------------
+
+Cognito
+hilton-dev-cognito-userpool
+
+應用程式名稱
+hilton-appstream-mfa
+
+Amplify
+hilton-appstream-mfa
+
+---------------
+
+需求：做一個具有 MFA 功能的用戶登入介面，然後透過這登入介面訪問 Appstream2.0，要使用以下的功能
+
+1. 前端 Next.js 
+2. 使用 Cognito 進行登入驗證
+3. 添加 MFA
+4. 忘記密碼
+5. 使用 AWS SDK for JavaScript v3 串 Appstream 功能
+6. Web、App Mode
+7. Env 放在 Amplify 的 Securt 中
+8. 最後成功後部署到 Amplify 
+
+---------------已改
+解決當用戶初次輸入帳密並訪問 change-password 頁面時重整頁面就會自動重定向回 login 頁面的問題
+
+
+---------------需求
+登入介面
+首次登入更改密碼
+MFA 頁面
+忘記密碼
+統一通知消息樣式
+使用 Cognito 進行登入驗證以及 MFA 機制
+
+強制用戶設置 MFA TOTP (基於時間的一次性密碼) 並引導用戶完成 MFA 設置
+
+後續登入時，用戶需提供電子郵件/密碼，然後提供 MFA 驗證碼
+
+使用 AWS SDK for JavaScript v3 串 Appstream 功能
+部署到 Amplify 
+響應式設計
+各種裝置、手機等嘗試登入
+環境變數
+重設密碼要有取消按鈕 返回登入頁面
+
+配置適當的 CORS 設置，限制可以訪問用戶池的網站
+
+as2 只使用登入系統 不要有其他的登入方式
+
+登入狀態只能訪問主應用程式頁面 不能跳轉到其他不相干的頁面
+
+當完成驗證 不能跳到 mfa驗證和更新密碼頁面
+
+確保帳號密碼正確且確定MFA通過後才能訪問主頁面
+
+移除 src/components/common/SetupProgressIndicator.tsx 頁面因為用不到了
+
+當帳號被停止或移除時 要登出裝置 
+
