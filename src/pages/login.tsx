@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
-import { showError } from '@/lib/utils/notification';
+import { showError, showInfo } from '@/lib/utils/notification';
 import { MFAType } from '@/lib/hooks/useCognito';
 
 export default function Login() {
@@ -12,13 +12,15 @@ export default function Login() {
   const [mfaCode, setMfaCode] = useState('');
   const [formStep, setFormStep] = useState<'login' | 'mfa'>('login');
   const [availableMfaTypes, setAvailableMfaTypes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const router = useRouter();
   const { 
     login, 
     isAuthenticated, 
-    loading, 
-    error, 
+    loading: authLoading, 
+    error: authError, 
     newPasswordRequired,
     // MFA 相關
     mfaRequired,
@@ -30,14 +32,16 @@ export default function Login() {
   // 簡化檢查邏輯，避免與 ProtectedRoute 衝突
   useEffect(() => {
     // 如果正在加載，不執行任何檢查
-    if (loading) return;
+    if (authLoading) return;
     
     // 其他的路由保護邏輯將由 ProtectedRoute 組件處理
     // 這裡只保留必要的檢查，避免重複邏輯
-  }, [loading]);
+  }, [authLoading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     if (!username || !password) {
       showError('請輸入電子郵件和密碼');
@@ -47,25 +51,32 @@ export default function Login() {
     try {
       const result = await login(username, password);
       
-      if (result.success) {
-        router.push('/');
-      } else if (result.newPasswordRequired) {
+      if (result.mfaRequired) {
+        // 直接顯示錯誤或提示，不再跳轉 mfa-verification
+        showError('此帳號已啟用 MFA，請聯繫管理員或重設帳號。');
+        return;
+      }
+      
+      if (result.newPasswordRequired) {
         router.push('/change-password');
-      } else if (result.mfaRequired) {
-        // 修改：MFA需要驗證時直接重定向到MFA驗證頁面
-        router.push('/mfa-verification');
-        
-        // 如果有可用的MFA類型選項，保存到localStorage
-        if (result.availableMfaTypes && Array.isArray(result.availableMfaTypes)) {
-          try {
-            localStorage.setItem('cognito_mfa_options', JSON.stringify(result.availableMfaTypes));
-          } catch (e) {
-            console.error('無法保存MFA選項到localStorage:', e);
-          }
+        return;
+      }
+      
+      if (result.success) {
+        if (result.needsMfaSetup) {
+          // 如果是初次使用新密碼登入且未設置 MFA，重定向到設置頁面
+          showInfo('請完成多因素認證(MFA)設置，以增強您的帳戶安全性。');
+          router.push('/mfa-setup');
+        } else {
+          // 如果不需要設置 MFA，直接進入首頁
+          router.push('/');
         }
       }
-    } catch (err) {
-      // 移除重複的錯誤顯示
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('登入失敗，請檢查您的用戶名和密碼');
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -3,7 +3,6 @@ import { CognitoUser, CognitoUserSession } from 'amazon-cognito-identity-js';
 import { useCognito, MFAType } from '@/lib/hooks/useCognito';
 import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
 import { useRouter } from 'next/router';
-import { SetupStep } from '@/components/common/SetupProgressIndicator';
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -14,6 +13,7 @@ type AuthContextType = {
     mfaRequired?: boolean;
     mfaType?: MFAType;
     availableMfaTypes?: any[];
+    needsMfaSetup: boolean;
   }>;
   completeNewPassword: (newPassword: string) => Promise<boolean>;
   logout: () => void;
@@ -46,8 +46,8 @@ type AuthContextType = {
   // 安全設置進度相關
   isFirstLogin: boolean;
   setIsFirstLogin: (isFirst: boolean) => void;
-  currentSetupStep: SetupStep;
-  setCurrentSetupStep: (step: SetupStep) => void;
+  currentSetupStep: 'password' | 'mfa' | 'complete';
+  setCurrentSetupStep: (step: 'password' | 'mfa' | 'complete') => void;
   isMfaSetupRequired: boolean;
   setIsMfaSetupRequired: (required: boolean) => void;
   completeSetup: () => void;
@@ -79,12 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     return false;
   });
-  const [currentSetupStep, setCurrentSetupStep] = useState<SetupStep>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('cognito_setup_step') as SetupStep) || 'password';
-    }
-    return 'password';
-  });
+  const [currentSetupStep, setCurrentSetupStep] = useState<'password' | 'mfa' | 'complete'>('password');
   const [isMfaSetupRequired, setIsMfaSetupRequired] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('cognito_mfa_setup_required') !== 'false';
@@ -238,6 +233,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     mfaRequired?: boolean;
     mfaType?: MFAType;
     availableMfaTypes?: any[];
+    needsMfaSetup: boolean;
   }> => {
     try {
       // 在開始新的登入前，清除所有可能存在的狀態
@@ -253,16 +249,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (result.availableMfaTypes) {
             localStorage.setItem('cognito_mfa_options', JSON.stringify(result.availableMfaTypes));
           }
-          // 保存用戶名和密碼，用於後續 MFA 驗證
           localStorage.setItem('cognito_username', username);
           localStorage.setItem('cognito_password', password);
         }
-        
         return { 
           success: false, 
           mfaRequired: true, 
           mfaType: result.mfaType, 
-          availableMfaTypes: result.availableMfaTypes
+          availableMfaTypes: result.availableMfaTypes,
+          needsMfaSetup: false
         };
       }
       
@@ -274,11 +269,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('cognito_first_login', 'true');
           localStorage.setItem('cognito_setup_step', 'password');
           localStorage.setItem('cognito_new_password_required', 'true');
-          // 保存用戶名和密碼，用於後續密碼設置
           localStorage.setItem('cognito_username', username);
           localStorage.setItem('cognito_password', password);
         }
-        return { success: false, newPasswordRequired: true };
+        return { success: false, newPasswordRequired: true, needsMfaSetup: false };
       }
       
       if (result.success && result.session) {
@@ -288,57 +282,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         setUser(getCurrentUser());
         
-        // 檢查是否有未完成的設置流程
-        const savedFirstLogin = typeof window !== 'undefined' ? 
-          localStorage.getItem('cognito_first_login') === 'true' : false;
-        const savedSetupStep = typeof window !== 'undefined' ? 
-          localStorage.getItem('cognito_setup_step') as SetupStep : null;
-          
-        // 如果本地儲存有未完成的設置流程
-        if (savedFirstLogin && savedSetupStep && savedSetupStep !== 'complete') {
-          console.log('檢測到未完成的設置流程:', savedSetupStep);
-          
-          // 恢復設置狀態
+        // 檢查是否需要設置 MFA
+        const mfaSettings = await cognitoGetUserMfaSettings();
+        if (!mfaSettings.enabled) {
+          // 如果 MFA 未啟用，設置為首次登入並需要設置 MFA
           setIsFirstLogin(true);
-          setCurrentSetupStep(savedSetupStep);
-          
-          // 如果未完成的是 MFA 設置
-          if (savedSetupStep === 'mfa') {
-            const isMfaRequired = typeof window !== 'undefined' ? 
-              localStorage.getItem('cognito_mfa_setup_required') !== 'false' : true;
-            setIsMfaSetupRequired(isMfaRequired);
-          }
-        } 
-        // 如果沒有未完成的設置流程，但狀態中還有設置標記，進行清理
-        else if (isFirstLogin) {
-          setIsFirstLogin(false);
-          setCurrentSetupStep('complete');
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('cognito_first_login', 'false');
-            localStorage.setItem('cognito_setup_step', 'complete');
-          }
-        }
-        
-        // 檢查是否是首次登入流程，如果是，且已完成密碼設置，更新到MFA階段
-        if (isFirstLogin && currentSetupStep === 'password') {
           setCurrentSetupStep('mfa');
+          setIsMfaSetupRequired(true);
           if (typeof window !== 'undefined') {
+            localStorage.setItem('cognito_first_login', 'true');
             localStorage.setItem('cognito_setup_step', 'mfa');
-            // 清除需要新密碼的標記，因為密碼已設置
-            localStorage.removeItem('cognito_new_password_required');
-            localStorage.removeItem('cognito_password');
+            localStorage.setItem('cognito_mfa_setup_required', 'true');
+            localStorage.setItem('cognito_mfa_enabled', 'false');
           }
+          return { success: true, needsMfaSetup: true };
+        } else {
+          // 如果 MFA 已啟用，保存狀態
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cognito_mfa_enabled', 'true');
+          }
+          return { success: true, needsMfaSetup: false };
         }
-        
-        return { success: true };
       }
       
-      return { success: false };
+      return { success: false, needsMfaSetup: false };
     } catch (error) {
       console.error('Login error:', error);
       // 登入失敗時清除所有狀態
       clearAllCredentials();
-      return { success: false };
+      return { success: false, needsMfaSetup: false };
     }
   };
 

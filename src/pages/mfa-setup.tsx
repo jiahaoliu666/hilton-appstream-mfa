@@ -4,7 +4,6 @@ import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
 import { showError, showSuccess, showInfo } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
-import SetupProgressIndicator from '@/components/common/SetupProgressIndicator';
 import { useSecurityMonitor } from '@/lib/hooks/useSecurityMonitor';
 
 export default function MfaSetup() {
@@ -102,7 +101,12 @@ export default function MfaSetup() {
     };
 
     checkMfaSettings();
-  }, [isAuthenticated, getUserMfaSettings, router, authLoading, isFirstLogin, currentSetupStep, completeSetup]);
+
+    if (mfaSettings.enabled) {
+      // MFA 已啟用，直接導向驗證頁面
+      return;
+    }
+  }, [isAuthenticated, getUserMfaSettings, router, authLoading, isFirstLogin, currentSetupStep, completeSetup, mfaSettings.enabled]);
 
   // 開始設置 TOTP
   const handleSetupTotpMfa = async () => {
@@ -157,15 +161,15 @@ export default function MfaSetup() {
         if (isFirstLogin && currentSetupStep === 'mfa') {
           completeSetup();
           
-          // 為來自密碼變更的用戶提供特別的成功訊息
-          if (isFromPasswordChange) {
-            showSuccess('MFA設置完成！您已成功完成所有安全設置，即將跳轉到首頁。');
-          }
-          
-          // 清除密碼變更標記
+          // 清除所有相關標記
           if (typeof window !== 'undefined') {
+            localStorage.removeItem('cognito_first_login');
+            localStorage.removeItem('cognito_setup_step');
+            localStorage.removeItem('cognito_mfa_setup_required');
             localStorage.removeItem('from_password_change');
           }
+          
+          showSuccess('MFA設置完成！您已成功完成所有安全設置，即將跳轉到首頁。');
           
           // 延遲一秒後跳轉到首頁
           setTimeout(() => {
@@ -287,14 +291,6 @@ export default function MfaSetup() {
   const renderOptionsPage = () => (
     <div>
       <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>多因素認證 (MFA) 設置</h1>
-      
-      {/* 只有在首次登入時才顯示進度指示器 */}
-      {isFirstLogin && (
-        <SetupProgressIndicator 
-          currentStep="mfa" 
-          isMfaRequired={true} 
-        />
-      )}
       
       {/* 如果來自密碼變更頁面，顯示特別的提示信息 */}
       {isFromPasswordChange && (
@@ -481,14 +477,6 @@ export default function MfaSetup() {
   const renderTotpSetupPage = () => (
     <div>
       <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>設置驗證器應用</h1>
-      
-      {/* 只有在首次登入時才顯示進度指示器 */}
-      {isFirstLogin && (
-        <SetupProgressIndicator 
-          currentStep="mfa" 
-          isMfaRequired={true} 
-        />
-      )}
       
       <div style={{ marginBottom: '2rem' }}>
         <p style={{ marginBottom: '1rem' }}>

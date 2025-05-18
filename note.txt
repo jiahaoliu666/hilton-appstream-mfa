@@ -6,7 +6,6 @@ hilton-appstream-mfa/
 │   │       ├── AuthContext.tsx      # AWS Cognito 身份驗證上下文
 │   │       └── ProtectedRoute.tsx   # 路由保護組件
 │   ├── common/
-│   │       ├── SetupProgressIndicator.tsx # 更改密碼、MFA驗證進度指示器
 │   ├── lib/
 │   │   ├── api/
 │   │   │   └── apiClient.ts         # API 客戶端與認證攔截器
@@ -17,6 +16,7 @@ hilton-appstream-mfa/
 │   │   │    └── useSecurityMonitor.ts # 安全監控 Hook
 │   │   └── utils/
 │   │       └── notification.ts      # 通知功能
+│   │       └── constants.ts         # 常量
 │   ├── pages/
 │   │   ├── _app.tsx                 # 應用入口
 │   │   ├── _document.tsx            # 自定義文檔
@@ -45,4 +45,9 @@ useSecurityMonitor.ts # 安全監控 Hook
 2. 如果用戶 10 分鐘內沒有任何活動，會自動清除憑證並返回登入頁面
 3. 當用戶點擊返回按鈕時，會清除所有憑證並返回登入頁面
 4. 所有這些操作都會在首次登入流程中觸發，確保敏感認證階段的安全性
+===============================================
+constants.ts # 常量
+===============================================
+集中管理所有路徑常量
+使代碼更容易維護和修改
 ===============================================

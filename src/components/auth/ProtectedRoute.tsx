@@ -1,22 +1,22 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './AuthContext';
-import { SetupStep } from '@/components/common/SetupProgressIndicator';
 import { useSecurityMonitor } from '@/lib/hooks/useSecurityMonitor';
+import { 
+  loginPath, 
+  changePasswordPath, 
+  mfaSetupPath,
+  optionsPath
+} from '@/utils/constants';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 // 不需要身份驗證的頁面路徑
-const publicPaths = ['/login', '/signup', '/forgot-password'];
+const publicPaths = [loginPath, '/signup', '/forgot-password'];
 
-// 特殊路徑配置 
-const changePasswordPath = '/change-password';
-const mfaPath = '/mfa-verification'; // MFA 驗證頁面
-const mfaSetupPath = '/mfa-setup'; // MFA 設置頁面
-
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { 
     isAuthenticated, 
     loading, 
@@ -33,8 +33,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   const isPublicPage = publicPaths.includes(router.pathname);
   const isChangePasswordPage = router.pathname === changePasswordPath;
-  const isMfaVerificationPage = router.pathname === mfaPath;
   const isMfaSetupPage = router.pathname === mfaSetupPath;
+  const isOptionsPage = router.pathname === optionsPath;
+
+  const mfaEnabled = typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_enabled') === 'true';
 
   useEffect(() => {
     // 如果正在加載身份驗證狀態，不執行任何重定向
@@ -48,7 +50,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     const sessionAge = Date.now() - lastSessionTime;
     const isSessionExpired = sessionAge > 24 * 60 * 60 * 1000; // 24小時過期
 
-    // 檢查是否需要設置新密碼（從 localStorage 或狀態中獲取）
+    // 檢查是否需要設置新密碼
     const isNewPasswordRequiredFromStorage = 
       typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true';
     const needsNewPassword = newPasswordRequired || isNewPasswordRequiredFromStorage;
@@ -60,16 +62,17 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
     // 檢查設置步驟
     const setupStepFromStorage = typeof window !== 'undefined' ? 
-      localStorage.getItem('cognito_setup_step') as SetupStep : null;
+      localStorage.getItem('cognito_setup_step') as 'password' | 'mfa' | 'complete' : null;
     const effectiveCurrentSetupStep = 
       (currentSetupStep !== 'complete' && setupStepFromStorage) ? 
-      setupStepFromStorage as SetupStep : 
+      setupStepFromStorage : 
       currentSetupStep;
 
-    // 檢查是否有儲存的用戶名和密碼
-    const hasStoredCredentials = typeof window !== 'undefined' && 
-      localStorage.getItem('cognito_username') && 
-      localStorage.getItem('cognito_password');
+    // 檢查 MFA 狀態
+    const mfaEnabled = typeof window !== 'undefined' && 
+      localStorage.getItem('cognito_mfa_enabled') === 'true';
+    const needsMfaSetup = typeof window !== 'undefined' && 
+      localStorage.getItem('cognito_mfa_setup_required') === 'true';
 
     // 如果是公開頁面，允許訪問
     if (isPublicPage) {
@@ -84,7 +87,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
 
     // 如果正在密碼設置頁面且需要設置密碼，允許停留
-    if (isChangePasswordPage && (needsNewPassword || hasStoredCredentials)) {
+    if (isChangePasswordPage && needsNewPassword) {
       return;
     }
 
@@ -97,7 +100,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         localStorage.removeItem('cognito_access_token');
         localStorage.removeItem('cognito_refresh_token');
       }
-      router.push('/login');
+      router.push(loginPath);
       return;
     }
 
@@ -113,8 +116,25 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
     }
 
+    // 處理 MFA 相關頁面的重定向邏輯
+    if (mfaEnabled) {
+      // 如果 MFA 已啟用，且需要設置
+      if (needsMfaSetup && !isMfaSetupPage) {
+        console.log('需要設置 MFA，重定向到 MFA 設置頁面');
+        router.push(mfaSetupPath);
+        return;
+      }
+    } else {
+      // 如果 MFA 未啟用，且需要設置
+      if (needsMfaSetup && !isMfaSetupPage) {
+        console.log('需要設置 MFA，重定向到 MFA 設置頁面');
+        router.push(mfaSetupPath);
+        return;
+      }
+    }
+
     // 如果未登入且不是需要設置新密碼的情況，重定向到登入頁面
-    if (!isAuthenticated && !needsNewPassword && !hasStoredCredentials) {
+    if (!isAuthenticated && !needsNewPassword) {
       console.log('未登入用戶訪問受保護頁面，重定向到登入頁面');
       handleReturnToLogin();
       return;
@@ -182,7 +202,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       isPublicPage,
       isAuthenticated,
       needsMfa,
-      isMfaVerificationPage,
+      isMfaSetupPage,
       needsNewPassword,
       isChangePasswordPage,
       isFirstLogin,

@@ -63,6 +63,7 @@ export const useCognito = () => {
     mfaRequired?: boolean;
     mfaType?: MFAType;
     availableMfaTypes?: any[];
+    setupRequired?: boolean;
   }> => {
     setLoading(true);
     setError(null);
@@ -107,10 +108,10 @@ export const useCognito = () => {
       const result = await new Promise<any>((resolve, reject) => {
         cognitoUser.authenticateUser(authenticationDetails, {
           onSuccess: (session) => {
-            resolve({ session, newPasswordRequired: false, mfaRequired: false });
+            resolve({ session, newPasswordRequired: false, mfaRequired: false, setupRequired: false });
           },
           onFailure: (err) => {
-            reject(err);
+            reject({ ...err, setupRequired: false });
           },
           newPasswordRequired: (userAttributes, requiredAttributes) => {
             // 處理首次登入需要更改密碼的情況
@@ -129,7 +130,7 @@ export const useCognito = () => {
               }));
             }
             
-            resolve({ newPasswordRequired: true, userAttributes, requiredAttributes });
+            resolve({ newPasswordRequired: true, userAttributes, requiredAttributes, setupRequired: false });
           },
           mfaRequired: (challengeName, challengeParameters) => {
             // 處理 SMS MFA 挑戰
@@ -143,7 +144,7 @@ export const useCognito = () => {
               localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於 MFA 失敗後重試
             }
             
-            resolve({ mfaRequired: true, mfaType: 'SMS_MFA' });
+            resolve({ mfaRequired: true, mfaType: 'SMS_MFA', setupRequired: false });
           },
           totpRequired: (challengeName, challengeParameters) => {
             // 處理 TOTP MFA 挑戰
@@ -157,7 +158,7 @@ export const useCognito = () => {
               localStorage.setItem('cognito_password', password); // 暫時存儲密碼用於 MFA 失敗後重試
             }
             
-            resolve({ mfaRequired: true, mfaType: 'SOFTWARE_TOKEN_MFA' });
+            resolve({ mfaRequired: true, mfaType: 'SOFTWARE_TOKEN_MFA', setupRequired: false });
           },
           selectMFAType: (challengeName, challengeParameters) => {
             // 處理需要選擇 MFA 類型的情況
@@ -183,7 +184,8 @@ export const useCognito = () => {
             resolve({ 
               mfaRequired: true, 
               mfaType: 'SELECT_MFA_TYPE',
-              availableMfaTypes: challengeParameters.mfaOptions || [] 
+              availableMfaTypes: challengeParameters.mfaOptions || [],
+              setupRequired: false
             });
           },
           mfaSetup: (challengeName, challengeParameters) => {
@@ -195,6 +197,9 @@ export const useCognito = () => {
               localStorage.setItem('cognito_mfa_required', 'true');
               localStorage.setItem('cognito_mfa_type', 'SOFTWARE_TOKEN_MFA');
               localStorage.setItem('cognito_password', password);
+              localStorage.setItem('cognito_first_login', 'true');
+              localStorage.setItem('cognito_setup_step', 'mfa');
+              localStorage.setItem('cognito_mfa_setup_required', 'true');
             }
             
             resolve({ 
@@ -207,7 +212,7 @@ export const useCognito = () => {
       });
 
       if (result.newPasswordRequired) {
-        return { success: false, newPasswordRequired: true };
+        return { success: false, newPasswordRequired: true, setupRequired: false };
       }
 
       if (result.mfaRequired) {
@@ -215,12 +220,13 @@ export const useCognito = () => {
           success: false, 
           mfaRequired: true, 
           mfaType: result.mfaType,
-          availableMfaTypes: result.availableMfaTypes
+          availableMfaTypes: result.availableMfaTypes,
+          setupRequired: false
         };
       }
 
       showSuccess('登入成功');
-      return { success: true, session: result.session };
+      return { success: true, session: result.session, setupRequired: false };
     } catch (err) {
       const cognitoError = err as CognitoError;
       let errorMessage = '登入失敗';
@@ -253,7 +259,7 @@ export const useCognito = () => {
 
       setError(errorMessage);
       showError(errorMessage);
-      return { success: false };
+      return { success: false, setupRequired: false };
     } finally {
       setLoading(false);
     }
@@ -263,6 +269,7 @@ export const useCognito = () => {
   const verifyMfaCode = useCallback(async (mfaCode: string, mfaType?: MFAType): Promise<{
     success: boolean;
     session?: CognitoUserSession;
+    setupRequired?: boolean;
   }> => {
     setLoading(true);
     setError(null);
