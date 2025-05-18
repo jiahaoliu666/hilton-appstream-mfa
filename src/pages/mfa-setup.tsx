@@ -6,9 +6,8 @@ import { showError, showSuccess } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function MfaSetup() {
-  const [setupData, setSetupData] = useState<{ secretCode?: string; qrCodeUrl?: string }>({});
+  const [setupData, setSetupData] = useState<{ qrCodeUrl?: string }>({});
   const [totpCode, setTotpCode] = useState('');
-  const [deviceName, setDeviceName] = useState('我的驗證器');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setupTotpMfa, verifyAndEnableTotpMfa } = useAuth();
@@ -17,8 +16,8 @@ export default function MfaSetup() {
     const doSetup = async () => {
       setLoading(true);
       const result = await setupTotpMfa();
-      if (result.success && result.secretCode && result.qrCodeUrl) {
-        setSetupData({ secretCode: result.secretCode, qrCodeUrl: result.qrCodeUrl });
+      if (result.success && result.qrCodeUrl) {
+        setSetupData({ qrCodeUrl: result.qrCodeUrl });
       } else {
         showError('無法產生 QRCode，請稍後再試');
       }
@@ -34,7 +33,7 @@ export default function MfaSetup() {
       return;
     }
     setLoading(true);
-    const success = await verifyAndEnableTotpMfa(totpCode, deviceName);
+    const success = await verifyAndEnableTotpMfa(totpCode);
     setLoading(false);
     if (success) {
       showSuccess('TOTP MFA 已成功啟用，將自動跳轉首頁');
@@ -52,40 +51,45 @@ export default function MfaSetup() {
         <title>設置驗證器應用 (TOTP) | Hilton AppStream</title>
         <meta name="description" content="設置多因素認證以增強帳戶安全性" />
       </Head>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f5f5f5', padding: '2rem 1rem', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: '400px', padding: '2rem', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
-          <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>設置驗證器應用 (TOTP)</h1>
-          <ol style={{ marginBottom: '2rem', paddingLeft: '1.2rem' }}>
-            <li style={{ marginBottom: '0.5rem' }}>用手機安裝 Google Authenticator、Microsoft Authenticator 或 Authy。</li>
-            <li style={{ marginBottom: '0.5rem' }}>掃描下方 QRCode 或手動輸入密鑰。</li>
-            <li style={{ marginBottom: '0.5rem' }}>輸入 App 產生的 6 位驗證碼。</li>
-          </ol>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', backgroundColor: '#f5f5f5', padding: '1.5rem', borderRadius: '8px' }}>
-            <div style={{ marginBottom: '1.5rem' }}>
-              {setupData.qrCodeUrl ? (
-                <QRCodeSVG value={setupData.qrCodeUrl} size={200} level="H" includeMargin={true} />
-              ) : (
-                <div style={{ width: '200px', height: '200px', backgroundColor: '#ddd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>加載 QR 碼中...</div>
-              )}
-            </div>
-            <div style={{ marginBottom: '1rem', width: '100%' }}>
-              <p style={{ marginBottom: '0.5rem', fontWeight: 'bold' }}>密鑰（手動輸入用）:</p>
-              <div style={{ backgroundColor: 'white', padding: '0.75rem', borderRadius: '4px', fontFamily: 'monospace', fontSize: '1.1rem', textAlign: 'center', wordBreak: 'break-all', border: '1px dashed #ccc' }}>
-                {setupData.secretCode || '...'}
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f5f5f5 60%, #e3e0ff 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem 1rem' }}>
+        <div style={{ width: '100%', maxWidth: '420px', background: 'white', borderRadius: '16px', boxShadow: '0 4px 24px rgba(80, 80, 160, 0.10)', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div>
+            <h1 style={{ fontSize: '1.7rem', fontWeight: 700, marginBottom: '0.5rem', color: '#222' }}>設置驗證器 App MFA</h1>
+            <p style={{ color: '#444', fontSize: '1rem', marginBottom: '1.5rem' }}>請使用驗證器 App 掃描 QR code，並輸入 App 產生的 6 位數驗證碼完成 MFA 設定。</p>
+          </div>
+          <div style={{ borderTop: '1px solid #eee', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>1. 安裝驗證器 App</div>
+                <div style={{ color: '#666', fontSize: '0.98rem' }}>請於手機安裝 Google Authenticator、Microsoft Authenticator 或 Authy。</div>
+              </div>
+              <div style={{ width: 56, height: 56, background: '#f5f5fa', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="32" height="32" fill="none" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#e3e0ff"/><rect x="6" y="4" width="12" height="16" rx="3" fill="#fff" stroke="#888" strokeWidth="1.2"/><rect x="9" y="7" width="6" height="1.5" rx="0.75" fill="#e3e0ff"/><rect x="9" y="10" width="6" height="1.5" rx="0.75" fill="#e3e0ff"/><rect x="9" y="13" width="6" height="1.5" rx="0.75" fill="#e3e0ff"/></svg>
               </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>2. 掃描 QR code</div>
+                <div style={{ color: '#666', fontSize: '0.98rem' }}>請用驗證器 App 掃描右方 QR code。</div>
+              </div>
+              <div style={{ width: 120, height: 120, background: '#f5f5fa', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #eee' }}>
+                {setupData.qrCodeUrl ? (
+                  <QRCodeSVG value={setupData.qrCodeUrl} size={100} level="H" includeMargin={true} />
+                ) : (
+                  <span style={{ color: '#aaa', fontSize: '0.9rem' }}>加載中...</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>3. 輸入驗證碼</div>
+              <input type="text" value={totpCode} onChange={e => setTotpCode(e.target.value)} style={{ width: '100%', padding: '0.85rem', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1.1rem', marginTop: '0.5rem', letterSpacing: '0.2em', textAlign: 'center' }} placeholder="請輸入 6 位數驗證碼" maxLength={6} disabled={loading} />
+            </div>
           </div>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>設備名稱（可選）</label>
-            <input type="text" value={deviceName} onChange={e => setDeviceName(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', border: '1px solid #ccc', marginBottom: '1rem' }} placeholder="例如: 我的 iPhone" disabled={loading} />
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>驗證碼</label>
-            <input type="text" value={totpCode} onChange={e => setTotpCode(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', border: '1px solid #ccc' }} placeholder="輸入驗證器應用顯示的 6 位數驗證碼" maxLength={6} disabled={loading} />
-          </div>
-          <button type="button" onClick={handleVerify} style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontSize: '1rem', fontWeight: 'bold', marginBottom: '1rem' }} disabled={!totpCode || loading}>
-            {loading ? '驗證中...' : '驗證並啟用'}
+          <button type="button" onClick={handleVerify} style={{ width: '100%', padding: '0.95rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontSize: '1.1rem', fontWeight: 'bold', marginTop: '0.5rem', marginBottom: '0.5rem', letterSpacing: '0.05em' }} disabled={!totpCode || loading}>
+            {loading ? '驗證中...' : '啟用 MFA'}
           </button>
-          <button type="button" onClick={() => router.push('/login')} style={{ width: '100%', padding: '0.75rem', backgroundColor: '#f5f5f5', color: '#666', border: '1px solid #ccc', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }} disabled={loading}>
-            返回
+          <button type="button" onClick={() => router.push('/login')} style={{ width: '100%', padding: '0.85rem', backgroundColor: '#f5f5f5', color: '#666', border: '1px solid #ccc', borderRadius: '6px', fontSize: '1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }} disabled={loading}>
+            返回登入
           </button>
         </div>
       </div>
