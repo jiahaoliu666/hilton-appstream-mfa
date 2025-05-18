@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
 import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
-import SetupProgressIndicator from '@/components/common/SetupProgressIndicator';
 import { useSecurityMonitor } from '@/lib/hooks/useSecurityMonitor';
 
 export default function ChangePassword() {
@@ -18,11 +17,7 @@ export default function ChangePassword() {
     loading, 
     error, 
     newPasswordRequired, 
-    cancelNewPasswordChallenge,
-    // 安全設置進度相關
-    isFirstLogin,
-    currentSetupStep,
-    isMfaSetupRequired
+    cancelNewPasswordChallenge
   } = useAuth();
   const [loadingState, setLoading] = useState(false);
 
@@ -127,53 +122,27 @@ export default function ChangePassword() {
       
       if (success) {
         console.log('密碼設置成功，準備重定向...');
-        showSuccess('密碼設置成功！');
-        
-        // 檢查是否是首次登入流程，如果是，且需要設置MFA，則跳轉到MFA設置頁面
-        if (isFirstLogin && isMfaSetupRequired) {
-          // 顯示即將跳轉的提示信息
-          showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
-          
-          // 設置標記，表示這是從密碼更改頁面跳轉而來
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('from_password_change', 'true');
-          }
-          
-          // 延遲一秒後跳轉，確保提示訊息能被看到
-          setTimeout(() => {
-            router.push('/mfa-setup');
-          }, 1500);
-        } else {
-          // 否則直接跳轉到首頁
-          showInfo('即將跳轉到首頁...');
-          setTimeout(() => {
-            router.push('/');
-          }, 1000);
+        showSuccess('密碼設置成功，請重新登入');
+        // 清除首次登入與 setup 標記
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cognito_first_login');
+          localStorage.removeItem('cognito_setup_step');
+          localStorage.removeItem('cognito_mfa_setup_required');
+          localStorage.removeItem('cognito_new_password_required');
+          localStorage.removeItem('cognito_password');
+          localStorage.removeItem('cognito_username');
         }
+        setTimeout(() => {
+          router.push('/login');
+        }, 1200);
+        return;
       } else {
         console.log('密碼設置返回失敗狀態，但沒有拋出錯誤');
-        // 錯誤處理已經在 AuthContext 中進行，這裡不需額外處理
+        showError('設置新密碼失敗，請稍後再試');
       }
     } catch (err) {
       console.error('設置新密碼時發生未捕獲的錯誤:', err);
-      
-      // 檢查是否是 MFA 相關的錯誤
-      if (err instanceof Error && (err.message.includes('MFA') || err.message.includes('多因素認證'))) {
-        // 這種情況下，密碼可能已經設置成功，只是需要進行 MFA 設置
-        showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
-        
-        // 設置標記，表示這是從密碼更改頁面跳轉而來
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('from_password_change', 'true');
-        }
-        
-        // 延遲一秒後跳轉到 MFA 設置頁面
-        setTimeout(() => {
-          router.push('/mfa-setup');
-        }, 1500);
-      } else {
-        showError('設置新密碼時發生錯誤，請稍後再試');
-      }
+      showError('設置新密碼時發生錯誤，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -214,14 +183,6 @@ export default function ChangePassword() {
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
           <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>設置新密碼</h1>
-          
-          {/* 只有在首次登入時才顯示進度指示器 */}
-          {isFirstLogin && (
-            <SetupProgressIndicator 
-              currentStep="password" 
-              isMfaRequired={isMfaSetupRequired} 
-            />
-          )}
           
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '1rem' }}>

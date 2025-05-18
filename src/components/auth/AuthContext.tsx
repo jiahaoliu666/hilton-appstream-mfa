@@ -555,68 +555,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('cognito_new_password_required');
           localStorage.removeItem('cognito_password');
+          localStorage.removeItem('cognito_first_login');
+          localStorage.removeItem('cognito_setup_step');
+          localStorage.removeItem('cognito_mfa_setup_required');
         }
         
-        // 檢查是否是首次登入流程
-        const isFirst = typeof window !== 'undefined' ? 
-          localStorage.getItem('cognito_first_login') === 'true' : isFirstLogin;
-          
-        const currentStep = typeof window !== 'undefined' ? 
-          localStorage.getItem('cognito_setup_step') as SetupStep || currentSetupStep : currentSetupStep;
-        
-        console.log('AuthContext: 檢查首次登入狀態:', { isFirst, currentStep });
-        
-        // 如果是首次登入流程，且設置了新密碼，更新進度到MFA設置階段
-        if ((isFirst || isFirstLogin) && (currentStep === 'password' || currentSetupStep === 'password')) {
-          // 更新首次登入標記為真
-          setIsFirstLogin(true);
-          
-          if (isMfaSetupRequired) {
-            console.log('AuthContext: 密碼設置成功，進入MFA設置階段');
-            // 設置步驟為 MFA
-            setCurrentSetupStep('mfa');
-            
-            // 保存到localStorage，確保MFA設置標記已設置
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('cognito_setup_step', 'mfa');
-              localStorage.setItem('cognito_mfa_setup_required', 'true');
-              localStorage.setItem('cognito_first_login', 'true');
-              // 保存會話狀態
-              localStorage.setItem('cognito_session_valid', 'true');
-              localStorage.setItem('cognito_last_session_time', Date.now().toString());
-            }
-            
-            // 延遲一秒後跳轉到 MFA 設置頁面
-            showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
-            setTimeout(() => {
-              router.push('/mfa-setup');
-            }, 1500);
-          } else {
-            console.log('AuthContext: 密碼設置成功，MFA設置已跳過，設置流程完成');
-            completeSetup();
-            
-            // 保存會話狀態
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('cognito_session_valid', 'true');
-              localStorage.setItem('cognito_last_session_time', Date.now().toString());
-            }
-            
-            // 延遲一秒後跳轉到首頁
-            showInfo('密碼已設置成功，即將跳轉到首頁...');
-            setTimeout(() => {
-              router.push('/');
-            }, 1500);
-          }
-        } else {
-          // 非首次登入流程，直接跳轉到首頁
-          showSuccess('密碼設置成功');
-          setTimeout(() => {
-            router.push('/');
-          }, 1000);
-        }
-        
-        // 立即檢查MFA設置狀態
-        handleGetUserMfaSettings().catch(console.error);
+        // 直接跳轉到首頁
+        setTimeout(() => {
+          router.push('/');
+        }, 1000);
         
         return true;
       }
@@ -636,52 +583,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('AuthContext: 完成新密碼過程中發生錯誤:', error);
       
-      // 檢查是否是 MFA 相關的錯誤
-      if (error instanceof Error) {
-        if (error.message.includes('MFA') || error.message.includes('多因素認證')) {
-          showInfo('您需要設置多因素認證 (MFA)，即將跳轉到 MFA 設置頁面');
+      // 如果錯誤包含 Session 相關的錯誤，顯示更有指導性的錯誤訊息
+      if (error instanceof Error && (error.message.includes('Session') || error.message.includes('會話'))) {
+        showError('您的會話已過期。請返回登入頁面，重新登入後再設置新密碼');
+        
+        // 延遲一秒後跳轉到登入頁面，給用戶時間看到錯誤訊息
+        setTimeout(() => {
+          // 清除新密碼設置狀態
+          cognitoCancelNewPasswordChallenge();
           
-          // 轉到 MFA 設置頁面
-          if (isFirstLogin && currentSetupStep === 'password') {
-            // 更新設置階段為MFA
-            setCurrentSetupStep('mfa');
-            
-            // 保存到localStorage，確保MFA設置標記已設置
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('cognito_setup_step', 'mfa');
-              // 清除需要新密碼的標記，因為密碼已設置
-              localStorage.removeItem('cognito_new_password_required');
-              localStorage.removeItem('cognito_password');
-              // 標記為需要設置MFA
-              localStorage.setItem('cognito_mfa_setup_required', 'true');
-              // 標記為首次登入，確保導航邏輯正確
-              localStorage.setItem('cognito_first_login', 'true');
-            }
-          }
-          
-          // 延遲一秒後跳轉到 MFA 設置頁面
-          setTimeout(() => {
-            router.push('/mfa-setup');
-          }, 1500);
-          
-          return true; // 密碼已設置成功，只是需要繼續設置 MFA
-        }
-      
-        // 如果錯誤包含 Session 相關的錯誤，顯示更有指導性的錯誤訊息
-        if (error.message.includes('Session') || error.message.includes('會話')) {
-          showError('您的會話已過期。請返回登入頁面，重新登入後再設置新密碼');
-          
-          // 延遲一秒後跳轉到登入頁面，給用戶時間看到錯誤訊息
-          setTimeout(() => {
-            // 清除新密碼設置狀態
-            cognitoCancelNewPasswordChallenge();
-            
-            // 使用 window.location 強制刷新到登入頁
-            window.location.href = '/login';
-          }, 1500);
-        } else {
-          showError('設置新密碼時發生錯誤: ' + (error instanceof Error ? error.message : '未知錯誤'));
-        }
+          // 使用 window.location 強制刷新到登入頁
+          window.location.href = '/login';
+        }, 1500);
+      } else {
+        showError('設置新密碼時發生錯誤: ' + (error instanceof Error ? error.message : '未知錯誤'));
       }
       
       return false;

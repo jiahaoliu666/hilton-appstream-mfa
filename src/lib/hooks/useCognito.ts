@@ -468,7 +468,6 @@ export const useCognito = () => {
 
       // 如果有會話，表示整個流程已完成
       console.log('新密碼設置完成，並獲得有效會話');
-      showSuccess('密碼設置成功!');
       return { success: true, session };
     } catch (err) {
       const cognitoError = err as Error;
