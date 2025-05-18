@@ -788,7 +788,6 @@ export const useCognito = () => {
       let errorMessage = '獲取 MFA 設置失敗';
 
       setError(errorMessage);
-      showError(errorMessage);
       return { success: false };
     } finally {
       setLoading(false);
@@ -842,7 +841,6 @@ export const useCognito = () => {
       let errorMessage = '設置 TOTP MFA 失敗';
 
       setError(errorMessage);
-      showError(errorMessage);
       return { success: false };
     } finally {
       setLoading(false);

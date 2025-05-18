@@ -121,7 +121,14 @@ export default function MfaSetup() {
         });
         setStep('setup-totp');
       } else {
-        showError('設置 TOTP MFA 失敗');
+        // 設置 TOTP MFA 失敗時只顯示一個錯誤 toast
+        if (!(window as any).__totpSetupErrorToastShown) {
+          (window as any).__totpSetupErrorToastShown = true;
+          showError('設置 TOTP MFA 失敗');
+          setTimeout(() => {
+            (window as any).__totpSetupErrorToastShown = false;
+          }, 2000);
+        }
       }
     } catch (error) {
       console.error('Setup TOTP error:', error);
@@ -367,63 +374,6 @@ export default function MfaSetup() {
             </svg>
             設置驗證器應用 (TOTP)
           </button>
-          
-          <button
-            type="button"
-            onClick={handleSetupSmsMfa}
-            disabled={loading}
-            style={{
-              padding: '1rem',
-              backgroundColor: '#2e7d32',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            {/* 簡訊圖標 */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            設置簡訊驗證 (SMS)
-          </button>
-          
-          {mfaSettings.enabled && (
-            <button
-              type="button"
-              onClick={handleDisableMfa}
-              disabled={loading}
-              style={{
-                padding: '1rem',
-                backgroundColor: '#d32f2f',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              {/* 禁用圖標 */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="8" y1="12" x2="16" y2="12"></line>
-              </svg>
-              禁用多因素認證
-            </button>
-          )}
         </div>
       </div>
       
