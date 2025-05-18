@@ -43,7 +43,7 @@ type AuthContextType = {
   disableMfa: () => Promise<boolean>;
   mfaSecret: string;
   mfaSecretQRCode: string;
-  // 安全設置進度指示相關
+  // 安全設置進度相關
   isFirstLogin: boolean;
   setIsFirstLogin: (isFirst: boolean) => void;
   currentSetupStep: SetupStep;
@@ -51,6 +51,8 @@ type AuthContextType = {
   isMfaSetupRequired: boolean;
   setIsMfaSetupRequired: (required: boolean) => void;
   completeSetup: () => void;
+  // 新增：清除所有憑證的函數
+  clearAllCredentials: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -662,6 +664,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsMfaSetupRequired(true);
   }, [cognitoCancelNewPasswordChallenge]);
 
+  // 新增：清除所有憑證的函數
+  const clearAllCredentials = useCallback(() => {
+    // 清除所有相關的 localStorage 項
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_id_token');
+      localStorage.removeItem('cognito_first_login');
+      localStorage.removeItem('cognito_setup_step');
+      localStorage.removeItem('cognito_new_password_required');
+      localStorage.removeItem('cognito_username');
+      localStorage.removeItem('cognito_challenge_session');
+      localStorage.removeItem('cognito_mfa_required');
+      localStorage.removeItem('cognito_mfa_type');
+      localStorage.removeItem('cognito_mfa_enabled');
+      localStorage.removeItem('cognito_mfa_options');
+      localStorage.removeItem('cognito_password');
+      localStorage.removeItem('cognito_mfa_setup_required');
+    }
+
+    // 重置所有狀態
+    setIsAuthenticated(false);
+    setUser(null);
+    setIsFirstLogin(false);
+    setCurrentSetupStep('password');
+    setIsMfaEnabled(false);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -694,7 +722,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setCurrentSetupStep,
         isMfaSetupRequired,
         setIsMfaSetupRequired,
-        completeSetup
+        completeSetup,
+        // 新增：清除所有憑證的函數
+        clearAllCredentials
       }}
     >
       {children}

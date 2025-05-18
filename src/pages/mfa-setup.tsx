@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { showError, showSuccess, showInfo } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
 import SetupProgressIndicator from '@/components/common/SetupProgressIndicator';
+import { useSecurityMonitor } from '@/lib/hooks/useSecurityMonitor';
 
 export default function MfaSetup() {
   const [step, setStep] = useState<'options' | 'setup-totp' | 'verify-totp'>('options');
@@ -39,6 +40,8 @@ export default function MfaSetup() {
     currentSetupStep,
     completeSetup
   } = useAuth();
+
+  const { handleReturnToLogin } = useSecurityMonitor();
 
   // 在組件掛載時檢查 MFA 設置
   useEffect(() => {
@@ -243,7 +246,7 @@ export default function MfaSetup() {
 
   // 返回到首頁
   const handleGoBack = () => {
-    router.push('/');
+    handleReturnToLogin();
   };
 
   // 跳過 MFA 設置 (僅限首次登入流程)

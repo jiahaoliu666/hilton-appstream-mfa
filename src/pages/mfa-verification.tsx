@@ -248,7 +248,7 @@ export default function MfaVerification() {
       )}
       {mfaType === 'SOFTWARE_TOKEN_MFA' && (
         <p style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.5rem' }}>
-          請打開您的驗證器應用 (如 Google Authenticator)，輸入顯示的 6 位數驗證碼。
+          請打開您的驗證器應用並輸入顯示的驗證碼。
         </p>
       )}
     </div>
