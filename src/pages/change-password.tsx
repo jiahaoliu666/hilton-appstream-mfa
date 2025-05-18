@@ -120,7 +120,7 @@ export default function ChangePassword() {
     }
 
     try {
-      setLoading(true); // 添加本地加載狀態
+      setLoading(true);
       console.log('開始執行設置新密碼...');
       
       const success = await completeNewPassword(newPassword);
@@ -133,6 +133,11 @@ export default function ChangePassword() {
         if (isFirstLogin && isMfaSetupRequired) {
           // 顯示即將跳轉的提示信息
           showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
+          
+          // 設置標記，表示這是從密碼更改頁面跳轉而來
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('from_password_change', 'true');
+          }
           
           // 延遲一秒後跳轉，確保提示訊息能被看到
           setTimeout(() => {
@@ -157,6 +162,11 @@ export default function ChangePassword() {
         // 這種情況下，密碼可能已經設置成功，只是需要進行 MFA 設置
         showInfo('密碼已設置成功，即將跳轉到MFA安全設置頁面...');
         
+        // 設置標記，表示這是從密碼更改頁面跳轉而來
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('from_password_change', 'true');
+        }
+        
         // 延遲一秒後跳轉到 MFA 設置頁面
         setTimeout(() => {
           router.push('/mfa-setup');
@@ -165,7 +175,7 @@ export default function ChangePassword() {
         showError('設置新密碼時發生錯誤，請稍後再試');
       }
     } finally {
-      setLoading(false); // 確保無論結果如何都會解除加載狀態
+      setLoading(false);
     }
   };
 

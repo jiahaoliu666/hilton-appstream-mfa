@@ -53,6 +53,7 @@ type AuthContextType = {
   completeSetup: () => void;
   // 新增：清除所有憑證的函數
   clearAllCredentials: () => void;
+  isMfaVerified: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,6 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<CognitoUser | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  
   // 首次登入與安全設置進度相關狀態
   const [isFirstLogin, setIsFirstLogin] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -94,6 +96,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isMfaEnabled, setIsMfaEnabled] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('cognito_mfa_enabled') === 'true';
+    }
+    return false;
+  });
+  
+  // 在 AuthProvider 組件內添加新的狀態
+  const [isMfaVerified, setIsMfaVerified] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cognito_mfa_verified') === 'true';
     }
     return false;
   });
@@ -124,6 +134,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   } = useCognito();
 
   const router = useRouter();
+
+  // 清除所有憑證的函數
+  const clearAllCredentials = useCallback(() => {
+    setIsAuthenticated(false);
+    setUser(null);
+    setIsMfaVerified(false); // 重置 MFA 驗證狀態
+    
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_id_token');
+      localStorage.removeItem('cognito_access_token');
+      localStorage.removeItem('cognito_refresh_token');
+      localStorage.removeItem('cognito_first_login');
+      localStorage.removeItem('cognito_setup_step');
+      localStorage.removeItem('cognito_new_password_required');
+      localStorage.removeItem('cognito_mfa_required');
+      localStorage.removeItem('cognito_mfa_type');
+      localStorage.removeItem('cognito_mfa_options');
+      localStorage.removeItem('cognito_username');
+      localStorage.removeItem('cognito_password');
+      localStorage.removeItem('cognito_mfa_verified'); // 清除 MFA 驗證狀態
+    }
+  }, []);
 
   // 更新安全設置進度
   useEffect(() => {
@@ -197,23 +229,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     availableMfaTypes?: any[];
   }> => {
     try {
-      // 在開始新的登入前，清除可能存在的設置狀態，避免狀態不一致
-      if (typeof window !== 'undefined') {
-        // 除非明確需要設置新密碼，否則清除相關標記
-        if (!cognitoNewPasswordRequired) {
-          localStorage.removeItem('cognito_new_password_required');
-        }
-        // 清除潛在的衝突狀態
-        if (!isFirstLogin) {
-          localStorage.removeItem('cognito_first_login');
-          localStorage.removeItem('cognito_setup_step');
-        }
-      }
+      // 在開始新的登入前，清除所有可能存在的狀態
+      clearAllCredentials();
 
       const result = await signIn(username, password);
       
       if (result.mfaRequired) {
-        // 如果需要 MFA 驗證，返回相關信息
+        // 如果需要 MFA 驗證，保存相關狀態
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cognito_mfa_required', 'true');
+          localStorage.setItem('cognito_mfa_type', result.mfaType || 'SMS_MFA');
+          if (result.availableMfaTypes) {
+            localStorage.setItem('cognito_mfa_options', JSON.stringify(result.availableMfaTypes));
+          }
+          // 保存用戶名和密碼，用於後續 MFA 驗證
+          localStorage.setItem('cognito_username', username);
+          localStorage.setItem('cognito_password', password);
+        }
+        
         return { 
           success: false, 
           mfaRequired: true, 
@@ -229,8 +262,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (typeof window !== 'undefined') {
           localStorage.setItem('cognito_first_login', 'true');
           localStorage.setItem('cognito_setup_step', 'password');
-          // 明確設置需要新密碼的標記
           localStorage.setItem('cognito_new_password_required', 'true');
+          // 保存用戶名和密碼，用於後續密碼設置
+          localStorage.setItem('cognito_username', username);
+          localStorage.setItem('cognito_password', password);
         }
         return { success: false, newPasswordRequired: true };
       }
@@ -280,6 +315,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             localStorage.setItem('cognito_setup_step', 'mfa');
             // 清除需要新密碼的標記，因為密碼已設置
             localStorage.removeItem('cognito_new_password_required');
+            localStorage.removeItem('cognito_password');
           }
         }
         
@@ -289,6 +325,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { success: false };
     } catch (error) {
       console.error('Login error:', error);
+      // 登入失敗時清除所有狀態
+      clearAllCredentials();
       return { success: false };
     }
   };
@@ -314,6 +352,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
+        setIsMfaVerified(true); // 設置 MFA 驗證狀態為已完成
+        
+        // 清除 MFA 相關狀態
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cognito_mfa_required');
+          localStorage.removeItem('cognito_mfa_type');
+          localStorage.removeItem('cognito_mfa_options');
+          localStorage.removeItem('cognito_username');
+          localStorage.removeItem('cognito_password');
+          localStorage.setItem('cognito_mfa_verified', 'true'); // 保存 MFA 驗證狀態
+        }
         
         // 如果是首次登入流程，且已完成MFA設置
         if (isFirstLogin && currentSetupStep === 'mfa') {
@@ -326,6 +375,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     } catch (error) {
       console.error('MFA verification error:', error);
+      // MFA 驗證失敗時，保留 MFA 相關狀態，但清除其他狀態
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cognito_id_token');
+        localStorage.removeItem('cognito_first_login');
+        localStorage.removeItem('cognito_setup_step');
+        localStorage.removeItem('cognito_new_password_required');
+        localStorage.removeItem('cognito_mfa_verified'); // 清除 MFA 驗證狀態
+      }
+      setIsMfaVerified(false); // 重置 MFA 驗證狀態
       return false;
     }
   };
@@ -607,31 +665,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // 登出函數
-  const handleLogout = () => {
-    signOut();
-    clearTokenFromStorage();
+  const handleLogout = useCallback(() => {
+    // 清除所有狀態
     setIsAuthenticated(false);
     setUser(null);
+    setIsMfaVerified(false); // 重置 MFA 驗證狀態
     
-    // 清除所有狀態
-    setIsFirstLogin(false);
-    setCurrentSetupStep('password');
-    setIsMfaEnabled(false);
-    
+    // 清除所有存儲的狀態
     if (typeof window !== 'undefined') {
-      // 清除所有相關localStorage項
+      localStorage.removeItem('cognito_id_token');
+      localStorage.removeItem('cognito_access_token');
+      localStorage.removeItem('cognito_refresh_token');
       localStorage.removeItem('cognito_first_login');
       localStorage.removeItem('cognito_setup_step');
       localStorage.removeItem('cognito_new_password_required');
-      localStorage.removeItem('cognito_username');
-      localStorage.removeItem('cognito_challenge_session');
       localStorage.removeItem('cognito_mfa_required');
       localStorage.removeItem('cognito_mfa_type');
-      localStorage.removeItem('cognito_mfa_enabled');
       localStorage.removeItem('cognito_mfa_options');
+      localStorage.removeItem('cognito_username');
       localStorage.removeItem('cognito_password');
+      localStorage.removeItem('cognito_mfa_verified'); // 清除 MFA 驗證狀態
     }
-  };
+    
+    // 調用 Cognito 的登出函數
+    signOut();
+  }, [signOut]);
 
   // 獲取 JWT 令牌函數
   const handleGetToken = async (): Promise<string | null> => {
@@ -663,32 +721,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setCurrentSetupStep('password');
     setIsMfaSetupRequired(true);
   }, [cognitoCancelNewPasswordChallenge]);
-
-  // 新增：清除所有憑證的函數
-  const clearAllCredentials = useCallback(() => {
-    // 清除所有相關的 localStorage 項
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('cognito_id_token');
-      localStorage.removeItem('cognito_first_login');
-      localStorage.removeItem('cognito_setup_step');
-      localStorage.removeItem('cognito_new_password_required');
-      localStorage.removeItem('cognito_username');
-      localStorage.removeItem('cognito_challenge_session');
-      localStorage.removeItem('cognito_mfa_required');
-      localStorage.removeItem('cognito_mfa_type');
-      localStorage.removeItem('cognito_mfa_enabled');
-      localStorage.removeItem('cognito_mfa_options');
-      localStorage.removeItem('cognito_password');
-      localStorage.removeItem('cognito_mfa_setup_required');
-    }
-
-    // 重置所有狀態
-    setIsAuthenticated(false);
-    setUser(null);
-    setIsFirstLogin(false);
-    setCurrentSetupStep('password');
-    setIsMfaEnabled(false);
-  }, []);
 
   return (
     <AuthContext.Provider
@@ -724,7 +756,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsMfaSetupRequired,
         completeSetup,
         // 新增：清除所有憑證的函數
-        clearAllCredentials
+        clearAllCredentials,
+        isMfaVerified
       }}
     >
       {children}

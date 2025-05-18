@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './AuthContext';
 import { SetupStep } from '@/components/common/SetupProgressIndicator';
+import { useSecurityMonitor } from '@/lib/hooks/useSecurityMonitor';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -28,6 +29,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     getUserMfaSettings
   } = useAuth();
   const router = useRouter();
+  const { handleReturnToLogin } = useSecurityMonitor();
 
   const isPublicPage = publicPaths.includes(router.pathname);
   const isChangePasswordPage = router.pathname === changePasswordPath;
@@ -71,27 +73,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       currentSetupStep;
     const effectiveIsMfaSetupRequired = isMfaSetupRequired || isMfaSetupRequiredFromStorage;
     
-    console.log('ProtectedRoute檢測條件:', {
-      path: router.pathname,
-      isPublicPage,
-      isMfaVerificationPage,
-      isChangePasswordPage,
-      isMfaSetupPage,
-      isAuthenticated,
-      newPasswordRequired,
-      mfaRequired,
-      isFirstLogin,
-      effectiveIsFirstLogin,
-      currentSetupStep,
-      effectiveCurrentSetupStep,
-      localStorage: {
-        first_login: isFirstLoginFromStorage,
-        setup_step: setupStepFromStorage,
-        mfa_required: localStorage.getItem('cognito_mfa_required'),
-        new_password_required: localStorage.getItem('cognito_new_password_required')
-      }
-    });
-
     // 檢查是否需要設置新密碼（從 localStorage 或狀態中獲取）
     const isNewPasswordRequiredFromStorage = 
       typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true';
@@ -101,13 +82,17 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     const isMfaRequiredFromStorage =
       typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_required') === 'true';
     const needsMfa = mfaRequired || isMfaRequiredFromStorage;
-    
+
+    // 檢查 MFA 驗證是否已完成
+    const isMfaVerified = typeof window !== 'undefined' ? 
+      localStorage.getItem('cognito_mfa_verified') === 'true' : false;
+
     // --- 重要: 明確的路由保護優先級順序 ---
     
     // 1. 如果未登入且嘗試訪問受保護頁面，重定向到登入頁面
     if (!isAuthenticated && !isPublicPage && !needsNewPassword && !needsMfa) {
       console.log('未登入用戶訪問受保護頁面，重定向到登入頁面');
-      router.push('/login');
+      handleReturnToLogin();
       return;
     }
     
@@ -167,9 +152,18 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       router.replace('/');
       return;
     }
+
+    // 8. 新增：檢查是否已完成 MFA 驗證
+    if (isAuthenticated && !isPublicPage && !isMfaVerificationPage && !isMfaSetupPage && !isChangePasswordPage) {
+      // 如果 MFA 是必需的但未完成驗證，重定向到 MFA 驗證頁面
+      if (needsMfa && !isMfaVerified) {
+        console.log('MFA 驗證未完成，重定向到 MFA 驗證頁面');
+        router.push(mfaPath);
+        return;
+      }
+    }
     
-    // 8. 檢查MFA設置狀態 - 只有在非首次登入流程時執行
-    // 避免與首次登入流程衝突
+    // 9. 檢查MFA設置狀態 - 只有在非首次登入流程時執行
     if (isAuthenticated && !effectiveIsFirstLogin && !needsMfa && !needsNewPassword) {
       const checkMfaStatus = async () => {
         try {
@@ -189,6 +183,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           }
         } catch (error) {
           console.error('檢查MFA狀態出錯:', error);
+          // 如果檢查失敗，可能是認證已過期，重定向到登入頁面
+          handleReturnToLogin();
         }
       };
       
@@ -212,7 +208,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     isFirstLogin,
     currentSetupStep,
     isMfaSetupRequired,
-    getUserMfaSettings
+    getUserMfaSettings,
+    handleReturnToLogin
   ]);
 
   // 顯示加載指示器

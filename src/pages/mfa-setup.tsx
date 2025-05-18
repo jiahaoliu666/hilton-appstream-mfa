@@ -50,9 +50,16 @@ export default function MfaSetup() {
     
     // 檢查是否來自密碼變更頁面
     if (typeof window !== 'undefined') {
+      const fromPasswordChange = localStorage.getItem('from_password_change') === 'true';
+      setIsFromPasswordChange(fromPasswordChange);
+      
+      // 如果是從密碼變更頁面而來，顯示特別的提示信息
+      if (fromPasswordChange) {
+        showInfo('請完成多因素認證(MFA)設置，以增強您的帳戶安全性。');
+      }
+      
       // 檢查是否是首次登入且正在進行 MFA 設置階段
       if (isFirstLogin && currentSetupStep === 'mfa') {
-        setIsFromPasswordChange(true);
         // 顯示歡迎提示，告知用戶需要完成MFA設置
         showInfo('歡迎！請完成多因素認證(MFA)設置，以增強您的帳戶安全性。');
       }
@@ -75,6 +82,11 @@ export default function MfaSetup() {
             showSuccess('MFA已設置完成！');
             completeSetup();
             
+            // 清除密碼變更標記
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('from_password_change');
+            }
+            
             // 延遲一秒後跳轉到首頁
             setTimeout(() => {
               router.push('/');
@@ -89,7 +101,6 @@ export default function MfaSetup() {
       }
     };
 
-    // 只需檢查當前 MFA 設置，路由保護已經由 ProtectedRoute 處理
     checkMfaSettings();
   }, [isAuthenticated, getUserMfaSettings, router, authLoading, isFirstLogin, currentSetupStep, completeSetup]);
 
@@ -151,6 +162,11 @@ export default function MfaSetup() {
             showSuccess('MFA設置完成！您已成功完成所有安全設置，即將跳轉到首頁。');
           }
           
+          // 清除密碼變更標記
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('from_password_change');
+          }
+          
           // 延遲一秒後跳轉到首頁
           setTimeout(() => {
             router.push('/');
@@ -193,6 +209,11 @@ export default function MfaSetup() {
           // 為來自密碼變更的用戶提供特別的成功訊息
           if (isFromPasswordChange) {
             showSuccess('MFA設置完成！您已成功完成所有安全設置，即將跳轉到首頁。');
+          }
+          
+          // 清除密碼變更標記
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('from_password_change');
           }
           
           // 延遲一秒後跳轉到首頁
