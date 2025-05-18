@@ -184,6 +184,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     typeof window !== 'undefined' && localStorage.getItem('cognito_new_password_required') === 'true';
   const needsNewPassword = newPasswordRequired || isNewPasswordRequiredFromStorage;
 
+  // 新增：允許 mfa-setup 頁面在 cognito_mfa_setup_required 為 true 時渲染
+  const isMfaSetupRequiredFromStorage =
+    typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_setup_required') === 'true';
+
   // 首次登入流程頁面檢查
   const isFirstLoginFlowPage = 
     (isFirstLogin && currentSetupStep === 'password' && isChangePasswordPage) || // 密碼設置頁面
@@ -195,7 +199,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     isAuthenticated || // 已登入用戶
     needsNewPassword || // 需要設置新密碼
     needsMfa || // 需要MFA驗證
-    isFirstLoginFlowPage; // 首次登入流程的特定頁面
+    isFirstLoginFlowPage || // 首次登入流程的特定頁面
+    (isMfaSetupPage && isMfaSetupRequiredFromStorage); // <--- 新增這行
   
   if (!shouldRender) {
     console.log('Protected route not rendering, conditions:', {

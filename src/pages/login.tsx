@@ -14,6 +14,7 @@ export default function Login() {
   const [availableMfaTypes, setAvailableMfaTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
   
   const router = useRouter();
   const { 
@@ -53,10 +54,13 @@ export default function Login() {
       const result = await login(username, password);
       
       if (result.mfaRequired) {
-        // 如果是 Cognito 的 MFA_SETUP 挑戰，直接導向 MFA 設置頁面
+        // 如果是 Cognito 的 MFA_SETUP 挑戰，設置 localStorage 並強制刷新跳轉
         if (result.mfaType === 'SOFTWARE_TOKEN_MFA') {
-          // 只導向，不 showInfo，避免重複提示
-          router.push('/mfa-setup');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cognito_mfa_setup_required', 'true');
+            window.location.replace('/mfa-setup');
+          }
+          setRedirecting(true);
           return;
         }
         // 其他情況才顯示錯誤
@@ -65,18 +69,22 @@ export default function Login() {
       }
       
       if (result.newPasswordRequired) {
+        setRedirecting(true);
         router.push('/change-password');
         return;
       }
       
       if (result.success) {
-        // 強制檢查 MFA 狀態
+        // 登入完全成功後查詢真實 MFA 狀態
         if (typeof window !== 'undefined') {
           getUserMfaSettings().then((mfaSettings: any) => {
             if (!mfaSettings.enabled) {
-              // 只導向，不 showInfo，避免重複提示
-              router.push('/mfa-setup');
+              localStorage.setItem('cognito_mfa_setup_required', 'true');
+              setRedirecting(true);
+              window.location.replace('/mfa-setup');
             } else {
+              localStorage.setItem('cognito_mfa_setup_required', 'false');
+              setRedirecting(true);
               router.push('/');
             }
           });
@@ -94,6 +102,10 @@ export default function Login() {
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
+
+  if (redirecting) {
+    return <div style={{textAlign: 'center', marginTop: '3rem'}}>正在跳轉...</div>;
+  }
 
   return (
     <>

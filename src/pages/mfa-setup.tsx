@@ -48,7 +48,7 @@ export default function MfaSetup() {
 
     // 僅在真正需要設置 MFA 時顯示提示，且只顯示一次
     if (typeof window !== 'undefined') {
-      // 僅在首次進入且未設置 MFA 狀態時顯示
+      // 僅在首次進入且未設置 MFA 狀態時顯
       const mfaToastKey = 'mfa_setup_info_shown';
       if (!(window as any).__mfaSetupToastShown && (!mfaSettings.enabled || (isFirstLogin && currentSetupStep === 'mfa'))) {
         (window as any).__mfaSetupToastShown = true;
