@@ -1022,6 +1022,22 @@ export const useCognito = () => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       if (typeof window !== 'undefined') {
+        // 檢查會話狀態
+        const isSessionValid = localStorage.getItem('cognito_session_valid') === 'true';
+        const lastSessionTime = parseInt(localStorage.getItem('cognito_last_session_time') || '0');
+        const sessionAge = Date.now() - lastSessionTime;
+        const isSessionExpired = sessionAge > 24 * 60 * 60 * 1000; // 24小時過期
+
+        // 如果會話已過期，清除所有狀態
+        if (isSessionExpired) {
+          localStorage.removeItem('cognito_session_valid');
+          localStorage.removeItem('cognito_last_session_time');
+          localStorage.removeItem('cognito_id_token');
+          localStorage.removeItem('cognito_access_token');
+          localStorage.removeItem('cognito_refresh_token');
+          return;
+        }
+
         // 檢查是否需要新密碼
         if (localStorage.getItem('cognito_new_password_required') === 'true') {
           // 如果有儲存的用戶名，嘗試恢復 CognitoUser 實例
@@ -1066,6 +1082,31 @@ export const useCognito = () => {
             setCurrentCognitoUser(cognitoUser);
             setMfaRequired(true);
             setMfaType(mfaTypeValue);
+          }
+        }
+
+        // 如果有有效的會話，嘗試恢復用戶狀態
+        if (isSessionValid) {
+          const currentUser = userPool.getCurrentUser();
+          if (currentUser) {
+            currentUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
+              if (err) {
+                console.error('獲取會話失敗:', err);
+                // 清除無效的會話狀態
+                localStorage.removeItem('cognito_session_valid');
+                localStorage.removeItem('cognito_last_session_time');
+                return;
+              }
+              if (session && session.isValid()) {
+                setCurrentCognitoUser(currentUser);
+                // 更新會話時間戳
+                localStorage.setItem('cognito_last_session_time', Date.now().toString());
+              } else {
+                // 會話無效，清除狀態
+                localStorage.removeItem('cognito_session_valid');
+                localStorage.removeItem('cognito_last_session_time');
+              }
+            });
           }
         }
       }

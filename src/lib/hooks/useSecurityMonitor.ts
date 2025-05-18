@@ -48,7 +48,12 @@ export const useSecurityMonitor = () => {
 
     // 監聽頁面離開
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isFirstLogin) {
+      // 檢查是否在 change-password 頁面
+      const isChangePasswordPage = router.pathname === '/change-password';
+      const needsNewPassword = localStorage.getItem('cognito_new_password_required') === 'true';
+      
+      // 只有在非 change-password 頁面或不需要設置新密碼時才清除憑證
+      if (isFirstLogin && !isChangePasswordPage && !needsNewPassword) {
         clearAllCredentials();
       }
     };
@@ -69,11 +74,16 @@ export const useSecurityMonitor = () => {
         clearTimeout(inactivityTimerRef.current);
       }
     };
-  }, [clearAllCredentials, isFirstLogin, resetInactivityTimer]);
+  }, [clearAllCredentials, isFirstLogin, resetInactivityTimer, router.pathname]);
 
   // 處理返回登入頁面
   const handleReturnToLogin = useCallback(() => {
-    if (isFirstLogin) {
+    // 檢查是否在 change-password 頁面
+    const isChangePasswordPage = router.pathname === '/change-password';
+    const needsNewPassword = localStorage.getItem('cognito_new_password_required') === 'true';
+    
+    // 只有在非 change-password 頁面或不需要設置新密碼時才清除憑證
+    if (isFirstLogin && !isChangePasswordPage && !needsNewPassword) {
       clearAllCredentials();
     }
     router.push('/login');

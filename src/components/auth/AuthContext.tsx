@@ -137,6 +137,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 清除所有憑證的函數
   const clearAllCredentials = useCallback(() => {
+    // 檢查是否在 change-password 頁面
+    const isChangePasswordPage = typeof window !== 'undefined' && 
+      window.location.pathname === '/change-password';
+    const needsNewPassword = typeof window !== 'undefined' && 
+      localStorage.getItem('cognito_new_password_required') === 'true';
+    
+    // 如果在 change-password 頁面且需要設置新密碼，保留必要的憑證
+    if (isChangePasswordPage && needsNewPassword) {
+      return;
+    }
+
     setIsAuthenticated(false);
     setUser(null);
     setIsMfaVerified(false); // 重置 MFA 驗證狀態
@@ -532,6 +543,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await saveTokenToStorage(result.session);
           setIsAuthenticated(true);
           setUser(getCurrentUser());
+          
+          // 保存會話狀態到 localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cognito_session_valid', 'true');
+            localStorage.setItem('cognito_last_session_time', Date.now().toString());
+          }
         }
         
         // 清除需要新密碼的標記
@@ -564,6 +581,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               localStorage.setItem('cognito_setup_step', 'mfa');
               localStorage.setItem('cognito_mfa_setup_required', 'true');
               localStorage.setItem('cognito_first_login', 'true');
+              // 保存會話狀態
+              localStorage.setItem('cognito_session_valid', 'true');
+              localStorage.setItem('cognito_last_session_time', Date.now().toString());
             }
             
             // 延遲一秒後跳轉到 MFA 設置頁面
@@ -574,6 +594,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } else {
             console.log('AuthContext: 密碼設置成功，MFA設置已跳過，設置流程完成');
             completeSetup();
+            
+            // 保存會話狀態
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cognito_session_valid', 'true');
+              localStorage.setItem('cognito_last_session_time', Date.now().toString());
+            }
             
             // 延遲一秒後跳轉到首頁
             showInfo('密碼已設置成功，即將跳轉到首頁...');
