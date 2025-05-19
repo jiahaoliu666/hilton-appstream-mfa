@@ -4,7 +4,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
 import { showError, showSuccess } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
-import { CognitoUserPool } from 'amazon-cognito-identity-js';
+import { CognitoUserPool, CognitoUser } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
 import toast from 'react-hot-toast';
 
@@ -21,7 +21,23 @@ export default function MfaSetup() {
       UserPoolId: cognitoConfig.userPoolId,
       ClientId: cognitoConfig.clientId
     });
-    const user = userPool.getCurrentUser();
+    let user = userPool.getCurrentUser();
+    // 若 user 為 null，嘗試從 localStorage 還原 CognitoUser 實例
+    if (!user && typeof window !== 'undefined') {
+      const username = localStorage.getItem('cognito_username');
+      const challengeSession = localStorage.getItem('cognito_challenge_session');
+      if (username && challengeSession) {
+        // Cognito SDK 預期的 localStorage 結構
+        localStorage.setItem(
+          `CognitoIdentityServiceProvider.${cognitoConfig.clientId}.LastAuthUser`,
+          username
+        );
+        user = new CognitoUser({
+          Username: username,
+          Pool: userPool
+        });
+      }
+    }
     if (!user) {
       toast.dismiss();
       setShowContent(false);
@@ -31,28 +47,17 @@ export default function MfaSetup() {
       }, 1200);
       return;
     }
-    user.getSession((err: Error | null, session: any) => {
-      if (err || !session?.isValid()) {
-        toast.dismiss();
-        setShowContent(false);
-        showError('Session 已失效，請重新登入');
-        setTimeout(() => {
-          router.replace('/login');
-        }, 1200);
-        return;
+    // 不要檢查 session，直接呼叫 setupTotpMfa
+    (async () => {
+      setLoading(true);
+      const result = await setupTotpMfa();
+      if (result.success && result.qrCodeUrl) {
+        setSetupData({ qrCodeUrl: result.qrCodeUrl });
+      } else {
+        showError('無法產生 QRCode，請稍後再試');
       }
-      // session 有效才呼叫 setupTotpMfa
-      (async () => {
-        setLoading(true);
-        const result = await setupTotpMfa();
-        if (result.success && result.qrCodeUrl) {
-          setSetupData({ qrCodeUrl: result.qrCodeUrl });
-        } else {
-          showError('無法產生 QRCode，請稍後再試');
-        }
-        setLoading(false);
-      })();
-    });
+      setLoading(false);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

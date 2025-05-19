@@ -461,13 +461,31 @@ export const useCognito = () => {
       });
 
       // 清除需要新密碼的標記，因為密碼已設置
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && session) {
         localStorage.removeItem('cognito_new_password_required');
         localStorage.removeItem('cognito_password');
+        localStorage.removeItem('cognito_username');
+        localStorage.removeItem('cognito_auth_details');
+        localStorage.removeItem('cognito_challenge_session');
       }
+      // 如果是 MFA_SETUP 挑戰，什麼都不清除，讓 CognitoUser 實例保留
 
       // 處理沒有會話但需要MFA的情況
       if (!session) {
+        // MFA_SETUP 挑戰時，主動將 CognitoUser 實例（帶 authenticationFlowType）存回 localStorage，並存密碼
+        if (typeof window !== 'undefined' && userToComplete) {
+          localStorage.setItem('cognito_username', userToComplete.getUsername());
+          localStorage.setItem('cognito_auth_details', JSON.stringify({ username: userToComplete.getUsername() }));
+          // 保存 authenticationFlowType 以便 mfa-setup 還原
+          localStorage.setItem('cognito_challenge_session', JSON.stringify({
+            challengeName: 'NEW_PASSWORD_REQUIRED',
+            authenticationFlowType: userToComplete.getAuthenticationFlowType()
+          }));
+          // 新增：保存密碼，確保 associateSoftwareToken 能正確運作
+          if (password) {
+            localStorage.setItem('cognito_password', password);
+          }
+        }
         console.log('密碼已成功設置，但需要進行MFA設置或驗證');
         // 這種情況視為成功，讓路由邏輯處理後續MFA流程
         return { success: true };

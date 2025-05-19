@@ -128,10 +128,9 @@ export default function ChangePassword() {
           localStorage.setItem('cognito_first_login', 'true');
           localStorage.setItem('cognito_setup_step', 'mfa');
           localStorage.setItem('cognito_mfa_setup_required', 'true');
+          // 強制跳轉，確保 CognitoUser 實例與 localStorage 狀態完整保留
+          window.location.replace('/mfa-setup');
         }
-        setTimeout(() => {
-          router.push('/mfa-setup');
-        }, 1200);
         return;
       } else {
         console.log('密碼設置返回失敗狀態，但沒有拋出錯誤');
