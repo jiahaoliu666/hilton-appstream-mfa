@@ -4,6 +4,7 @@ import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cogn
 import { cognitoConfig } from '@/lib/config/cognito';
 import { showError, showSuccess } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
+import { useRouter } from 'next/router';
 
 const userPool = new CognitoUserPool({
   UserPoolId: cognitoConfig.userPoolId,
@@ -11,6 +12,7 @@ const userPool = new CognitoUserPool({
 });
 
 export default function Login() {
+  const router = useRouter();
   const [step, setStep] = useState<'login' | 'newPassword' | 'mfaSetup' | 'mfaVerify' | 'main'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +41,12 @@ export default function Login() {
       setStep('login');
     }
   }, []);
+
+  useEffect(() => {
+    if (step === 'main') {
+      router.replace('/');
+    }
+  }, [step, router]);
 
   // 登入流程
   const handleLogin = async (e: React.FormEvent) => {
