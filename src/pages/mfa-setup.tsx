@@ -4,7 +4,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
 import { showError, showSuccess } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
-import { CognitoUserPool, CognitoUser } from 'amazon-cognito-identity-js';
+import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
 import toast from 'react-hot-toast';
 
@@ -47,14 +47,47 @@ export default function MfaSetup() {
       }, 1200);
       return;
     }
-    // 不要檢查 session，直接呼叫 setupTotpMfa
+    // 主動 signIn 取得 session
     (async () => {
       setLoading(true);
-      const result = await setupTotpMfa();
-      if (result.success && result.qrCodeUrl) {
-        setSetupData({ qrCodeUrl: result.qrCodeUrl });
-      } else {
-        showError('無法產生 QRCode，請稍後再試');
+      let sessionOk = false;
+      try {
+        const username = localStorage.getItem('cognito_username');
+        const password = localStorage.getItem('cognito_password');
+        if (username && password) {
+          await new Promise((resolve, reject) => {
+            const authenticationDetails = new AuthenticationDetails({
+              Username: username,
+              Password: password
+            });
+            user!.authenticateUser(authenticationDetails, {
+              onSuccess: () => resolve(true),
+              onFailure: (err) => reject(err),
+              newPasswordRequired: () => reject(new Error('不應該再要求新密碼')),
+              mfaRequired: () => reject(new Error('不應該再要求 MFA')),
+              totpRequired: () => reject(new Error('不應該再要求 TOTP')),
+              mfaSetup: () => resolve(true)
+            });
+          });
+          sessionOk = true;
+        }
+      } catch (err) {
+        toast.dismiss();
+        setShowContent(false);
+        showError('登入狀態已失效，請重新登入');
+        setTimeout(() => {
+          router.replace('/login');
+        }, 1200);
+        return;
+      }
+      // 取得 session 後再呼叫 setupTotpMfa
+      if (sessionOk) {
+        const result = await setupTotpMfa();
+        if (result.success && result.qrCodeUrl) {
+          setSetupData({ qrCodeUrl: result.qrCodeUrl });
+        } else {
+          showError('無法產生 QRCode，請稍後再試');
+        }
       }
       setLoading(false);
     })();
