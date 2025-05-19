@@ -2,19 +2,14 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './AuthContext';
 import { useSecurityMonitor } from '@/lib/hooks/useSecurityMonitor';
-import { 
-  loginPath, 
-  changePasswordPath, 
-  mfaSetupPath,
-  optionsPath
-} from '@/utils/constants';
+import { AUTH_PATHS } from '@/utils/constants';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 // 不需要身份驗證的頁面路徑
-const publicPaths = [loginPath, '/signup', '/forgot-password'];
+const publicPaths = [AUTH_PATHS.LOGIN, '/signup', '/forgot-password'];
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { 
@@ -32,9 +27,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { handleReturnToLogin } = useSecurityMonitor();
 
   const isPublicPage = publicPaths.includes(router.pathname);
-  const isChangePasswordPage = router.pathname === changePasswordPath;
-  const isMfaSetupPage = router.pathname === mfaSetupPath;
-  const isOptionsPage = router.pathname === optionsPath;
+  const isChangePasswordPage = router.pathname === AUTH_PATHS.CHANGE_PASSWORD;
+  const isMfaSetupPage = router.pathname === AUTH_PATHS.MFA_SETUP;
+  const isOptionsPage = router.pathname === AUTH_PATHS.OPTIONS;
 
   const mfaEnabled = typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_enabled') === 'true';
 
@@ -89,7 +84,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     // 如果需要設置新密碼，且不在密碼設置頁面，重定向到密碼設置頁面
     if (needsNewPassword && !isChangePasswordPage) {
       console.log('需要設置新密碼，重定向到密碼設置頁面');
-      router.push(changePasswordPath);
+      router.push(AUTH_PATHS.CHANGE_PASSWORD);
       return;
     }
 
@@ -107,18 +102,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         localStorage.removeItem('cognito_access_token');
         localStorage.removeItem('cognito_refresh_token');
       }
-      router.push(loginPath);
+      router.push(AUTH_PATHS.LOGIN);
       return;
     }
 
     // 處理首次登入流程
     if (effectiveIsFirstLogin) {
       if (effectiveCurrentSetupStep === 'password' && !isChangePasswordPage) {
-        router.push(changePasswordPath);
+        router.push(AUTH_PATHS.CHANGE_PASSWORD);
         return;
       }
       if (effectiveCurrentSetupStep === 'mfa' && !isMfaSetupPage) {
-        router.push(mfaSetupPath);
+        router.push(AUTH_PATHS.MFA_SETUP);
         return;
       }
     }
@@ -128,14 +123,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       // 如果 MFA 已啟用，且需要設置
       if (needsMfaSetup && !isMfaSetupPage) {
         console.log('需要設置 MFA，重定向到 MFA 設置頁面');
-        router.push(mfaSetupPath);
+        router.push(AUTH_PATHS.MFA_SETUP);
         return;
       }
     } else {
       // 如果 MFA 未啟用，且需要設置
       if (needsMfaSetup && !isMfaSetupPage) {
         console.log('需要設置 MFA，重定向到 MFA 設置頁面');
-        router.push(mfaSetupPath);
+        router.push(AUTH_PATHS.MFA_SETUP);
         return;
       }
     }

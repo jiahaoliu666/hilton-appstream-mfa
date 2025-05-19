@@ -1,4 +1,5 @@
 import toast from 'react-hot-toast';
+import { NOTIFICATION, COGNITO_ERROR_CODES } from './constants';
 
 // 通知類型
 type NotificationType = 'success' | 'error' | 'info' | 'warning';
@@ -6,7 +7,7 @@ type NotificationType = 'success' | 'error' | 'info' | 'warning';
 // 通知選項
 interface NotificationOptions {
   duration?: number;
-  position?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+  position?: typeof NOTIFICATION.POSITION[keyof typeof NOTIFICATION.POSITION];
 }
 
 /**
@@ -20,17 +21,23 @@ export const showNotification = (
   type: NotificationType = 'info',
   options?: NotificationOptions
 ) => {
+  const defaultOptions = {
+    duration: NOTIFICATION.DURATION.DEFAULT,
+    position: NOTIFICATION.POSITION.TOP_RIGHT,
+  };
+
   switch (type) {
     case 'success':
-      toast.success(message, options);
+      toast.success(message, { ...defaultOptions, ...options });
       break;
     case 'error':
-      toast.error(message, options);
+      toast.error(message, { ...defaultOptions, ...options });
       break;
     case 'info':
     case 'warning':
     default:
       toast(message, {
+        ...defaultOptions,
         ...options,
         icon: type === 'warning' ? '⚠️' : 'ℹ️',
       });
@@ -44,7 +51,10 @@ export const showNotification = (
  * @param options 通知選項
  */
 export const showSuccess = (message: string, options?: NotificationOptions) => {
-  showNotification(message, 'success', options);
+  showNotification(message, 'success', {
+    duration: NOTIFICATION.DURATION.SUCCESS,
+    ...options,
+  });
 };
 
 /**
@@ -53,7 +63,10 @@ export const showSuccess = (message: string, options?: NotificationOptions) => {
  * @param options 通知選項
  */
 export const showError = (message: string, options?: NotificationOptions) => {
-  showNotification(message, 'error', options);
+  showNotification(message, 'error', {
+    duration: NOTIFICATION.DURATION.ERROR,
+    ...options,
+  });
 };
 
 /**
@@ -78,30 +91,19 @@ export const showWarning = (message: string, options?: NotificationOptions) => {
  * Cognito 錯誤消息映射
  */
 export const mapCognitoErrorToMessage = (errorCode: string): string => {
-  switch (errorCode) {
-    case 'UserNotFoundException':
-      return '查無此用戶，請向系統管理員註冊';
-    case 'NotAuthorizedException':
-      return '查無此用戶，或密碼不正確';
-    case 'ResourceNotFoundException':
-      return '系統配置錯誤：認證服務未正確設置，請聯繫系統管理員';
-    case 'UserNotConfirmedException':
-      return '用戶尚未確認';
-    case 'UsernameExistsException':
-      return '用戶名已存在';
-    case 'InvalidPasswordException':
-      return '密碼不符合要求';
-    case 'LimitExceededException':
-      return '嘗試次數過多，請稍後再試';
-    case 'TooManyRequestsException': 
-      return '請求過於頻繁，請稍後再試';
-    case 'InvalidParameterException':
-      return '輸入參數無效';
-    case 'CodeMismatchException':
-      return '驗證碼不正確';
-    case 'ExpiredCodeException':
-      return '驗證碼已過期';
-    default:
-      return '發生未知錯誤，請稍後再試';
-  }
+  const errorMessages: Record<string, string> = {
+    [COGNITO_ERROR_CODES.USER_NOT_FOUND]: '查無此用戶，請向系統管理員註冊',
+    [COGNITO_ERROR_CODES.NOT_AUTHORIZED]: '查無此用戶，或密碼不正確',
+    [COGNITO_ERROR_CODES.RESOURCE_NOT_FOUND]: '系統配置錯誤：認證服務未正確設置，請聯繫系統管理員',
+    [COGNITO_ERROR_CODES.USER_NOT_CONFIRMED]: '用戶尚未確認',
+    [COGNITO_ERROR_CODES.USERNAME_EXISTS]: '用戶名已存在',
+    [COGNITO_ERROR_CODES.INVALID_PASSWORD]: '密碼不符合要求',
+    [COGNITO_ERROR_CODES.LIMIT_EXCEEDED]: '嘗試次數過多，請稍後再試',
+    [COGNITO_ERROR_CODES.TOO_MANY_REQUESTS]: '請求過於頻繁，請稍後再試',
+    [COGNITO_ERROR_CODES.INVALID_PARAMETER]: '輸入參數無效',
+    [COGNITO_ERROR_CODES.CODE_MISMATCH]: '驗證碼不正確',
+    [COGNITO_ERROR_CODES.EXPIRED_CODE]: '驗證碼已過期',
+  };
+
+  return errorMessages[errorCode] || '發生未知錯誤，請稍後再試';
 }; 

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { CognitoUser, CognitoUserSession } from 'amazon-cognito-identity-js';
 import { useCognito, MFAType } from '@/lib/hooks/useCognito';
-import { showError, showInfo, showSuccess } from '@/lib/utils/notification';
+import { showError, showInfo, showSuccess } from '@/utils/notification';
 import { useRouter } from 'next/router';
 
 type AuthContextType = {

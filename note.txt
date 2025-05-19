@@ -5,7 +5,6 @@ hilton-appstream-mfa/
 │   │   └── auth/
 │   │       ├── AuthContext.tsx      # AWS Cognito 身份驗證上下文
 │   │       └── ProtectedRoute.tsx   # 路由保護組件
-│   ├── common/
 │   ├── lib/
 │   │   ├── api/
 │   │   │   └── apiClient.ts         # API 客戶端與認證攔截器
@@ -18,13 +17,10 @@ hilton-appstream-mfa/
 │   │       └── notification.ts      # 通知功能
 │   │       └── constants.ts         # 常量
 │   ├── pages/
-│   │   ├── _app.tsx                 # 應用入口
-│   │   ├── _document.tsx            # 自定義文檔
-│   │   ├── index.tsx                # 首頁
-│   │   └── login.tsx                # 登入頁面
-│   │   └── change-password.tsx      # 更改密碼頁面
-│   │   └── mfa-setup.tsx            # MFA 設定頁面
-│   │   └── mfa-verification.tsx     # MFA 驗證頁面
+│   │   └── _app.tsx                 # 應用入口
+│   │   └── index.tsx                # 首頁
+│   │   └── login.tsx                # 登入頁面 
+ src/pages/404.tsx
 │   └── styles/
 │       └── globals.css              # 全局樣式
 

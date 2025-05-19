@@ -8,7 +8,7 @@ import {
   MFAOption
 } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
-import { showError, showSuccess, mapCognitoErrorToMessage } from '@/lib/utils/notification';
+import { showError, showSuccess, mapCognitoErrorToMessage } from '@/utils/notification';
 
 // 創建用戶池實例
 const userPool = new CognitoUserPool({
