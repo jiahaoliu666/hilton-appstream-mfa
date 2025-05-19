@@ -129,6 +129,8 @@ export default function ChangePassword() {
           localStorage.setItem('cognito_setup_step', 'mfa');
           localStorage.setItem('cognito_mfa_setup_required', 'true');
           localStorage.setItem('cognito_password', newPassword);
+          // 關鍵：清除 new_password_required，避免被重導回 change-password
+          localStorage.removeItem('cognito_new_password_required');
           router.push('/mfa-setup');
         }
         return;

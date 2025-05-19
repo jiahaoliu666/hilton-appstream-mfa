@@ -23,6 +23,14 @@ export default function MfaSetup() {
         ClientId: cognitoConfig.clientId
       });
       let user = userPool.getCurrentUser();
+      // Debug log
+      if (typeof window !== 'undefined') {
+        console.log('mfa-setup: user', user);
+        console.log('mfa-setup: user.getSignInUserSession()', user?.getSignInUserSession());
+        console.log('mfa-setup: localStorage cognito_username', localStorage.getItem('cognito_username'));
+        console.log('mfa-setup: localStorage cognito_password', localStorage.getItem('cognito_password'));
+        console.log('mfa-setup: localStorage cognito_challenge_session', localStorage.getItem('cognito_challenge_session'));
+      }
       // 若 user 為 null，嘗試從 localStorage 還原 CognitoUser 實例
       if (!user && typeof window !== 'undefined') {
         const username = localStorage.getItem('cognito_username');
@@ -115,6 +123,13 @@ export default function MfaSetup() {
     };
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 強制清除 cognito_new_password_required，避免被 ProtectedRoute 誤判
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cognito_new_password_required');
+    }
   }, []);
 
   const handleVerify = async () => {

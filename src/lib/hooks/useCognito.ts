@@ -463,7 +463,6 @@ export const useCognito = () => {
       // 清除需要新密碼的標記，因為密碼已設置
       if (typeof window !== 'undefined' && session) {
         localStorage.removeItem('cognito_new_password_required');
-        localStorage.removeItem('cognito_password');
         localStorage.removeItem('cognito_username');
         localStorage.removeItem('cognito_auth_details');
         localStorage.removeItem('cognito_challenge_session');
@@ -917,6 +916,9 @@ export const useCognito = () => {
       });
 
       showSuccess('TOTP MFA 已成功啟用');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cognito_password');
+      }
       return { success: true };
     } catch (err) {
       const cognitoError = err as CognitoError;
@@ -970,6 +972,9 @@ export const useCognito = () => {
       });
 
       showSuccess('SMS MFA 已成功啟用');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cognito_password');
+      }
       return { success: true };
     } catch (err) {
       const cognitoError = err as CognitoError;

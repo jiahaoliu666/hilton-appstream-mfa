@@ -39,13 +39,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const mfaEnabled = typeof window !== 'undefined' && localStorage.getItem('cognito_mfa_enabled') === 'true';
 
   useEffect(() => {
-    // 只要在 mfa-setup 頁面且 localStorage 有 flag，完全不做 redirect
+    // 只要在 mfa-setup 頁面且 setup_step 是 mfa，完全不做 redirect
+    const setupStepFromStorage = typeof window !== 'undefined' ? localStorage.getItem('cognito_setup_step') : null;
     if (
       typeof window !== 'undefined' &&
       router.pathname === '/mfa-setup' &&
-      localStorage.getItem('cognito_mfa_setup_required') === 'true'
+      setupStepFromStorage === 'mfa'
     ) {
-      // 直接允許渲染，不做任何 session 檢查
       return;
     }
     // 如果正在加載身份驗證狀態，不執行任何重定向
@@ -70,8 +70,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const effectiveIsFirstLogin = isFirstLogin || isFirstLoginFromStorage;
 
     // 檢查設置步驟
-    const setupStepFromStorage = typeof window !== 'undefined' ? 
-      localStorage.getItem('cognito_setup_step') as 'password' | 'mfa' | 'complete' : null;
     const effectiveCurrentSetupStep = 
       (currentSetupStep !== 'complete' && setupStepFromStorage) ? 
       setupStepFromStorage : 
