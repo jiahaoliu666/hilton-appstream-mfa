@@ -4,26 +4,55 @@ import { useAuth } from '@/components/auth/AuthContext';
 import Head from 'next/head';
 import { showError, showSuccess } from '@/lib/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
+import { CognitoUserPool } from 'amazon-cognito-identity-js';
+import { cognitoConfig } from '@/lib/config/cognito';
+import toast from 'react-hot-toast';
 
 export default function MfaSetup() {
   const [setupData, setSetupData] = useState<{ qrCodeUrl?: string }>({});
   const [totpCode, setTotpCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showContent, setShowContent] = useState(true);
   const router = useRouter();
   const { setupTotpMfa, verifyAndEnableTotpMfa } = useAuth();
 
   useEffect(() => {
-    const doSetup = async () => {
-      setLoading(true);
-      const result = await setupTotpMfa();
-      if (result.success && result.qrCodeUrl) {
-        setSetupData({ qrCodeUrl: result.qrCodeUrl });
-      } else {
-        showError('無法產生 QRCode，請稍後再試');
+    const userPool = new CognitoUserPool({
+      UserPoolId: cognitoConfig.userPoolId,
+      ClientId: cognitoConfig.clientId
+    });
+    const user = userPool.getCurrentUser();
+    if (!user) {
+      toast.dismiss();
+      setShowContent(false);
+      showError('登入狀態已失效，請重新登入');
+      setTimeout(() => {
+        router.replace('/login');
+      }, 1200);
+      return;
+    }
+    user.getSession((err: Error | null, session: any) => {
+      if (err || !session?.isValid()) {
+        toast.dismiss();
+        setShowContent(false);
+        showError('Session 已失效，請重新登入');
+        setTimeout(() => {
+          router.replace('/login');
+        }, 1200);
+        return;
       }
-      setLoading(false);
-    };
-    doSetup();
+      // session 有效才呼叫 setupTotpMfa
+      (async () => {
+        setLoading(true);
+        const result = await setupTotpMfa();
+        if (result.success && result.qrCodeUrl) {
+          setSetupData({ qrCodeUrl: result.qrCodeUrl });
+        } else {
+          showError('無法產生 QRCode，請稍後再試');
+        }
+        setLoading(false);
+      })();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -44,6 +73,14 @@ export default function MfaSetup() {
       showError('驗證失敗，請確認驗證碼正確且未過期');
     }
   };
+
+  if (!showContent) {
+    return (
+      <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f5f5f5'}}>
+        <div style={{fontSize: '1.2rem', color: '#888'}}>載入中...</div>
+      </div>
+    );
+  }
 
   return (
     <>

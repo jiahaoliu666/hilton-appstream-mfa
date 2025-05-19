@@ -29,7 +29,6 @@ hilton-appstream-mfa/
 │       └── globals.css              # 全局樣式
 
 
-
 ===============================================
 ProtectedRoute.tsx
 ===============================================
@@ -58,8 +57,6 @@ constants.ts # 常量
 ------------
 
 localhost:3000/change-password
-
-jiahaoliu@metaage.com.tw
 
 haoder7416@gmail.com
 @Qaz12345
