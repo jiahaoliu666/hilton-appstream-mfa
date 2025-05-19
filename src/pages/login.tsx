@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
@@ -23,6 +23,22 @@ export default function Login() {
   const [totpCode, setTotpCode] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const user = userPool.getCurrentUser();
+    if (user) {
+      user.getSession((err: any, session: any) => {
+        if (!err && session && session.isValid()) {
+          setCognitoUser(user);
+          setStep('main');
+        } else {
+          setStep('login');
+        }
+      });
+    } else {
+      setStep('login');
+    }
+  }, []);
 
   // 登入流程
   const handleLogin = async (e: React.FormEvent) => {
@@ -149,6 +165,15 @@ export default function Login() {
     }, 'SOFTWARE_TOKEN_MFA');
   };
 
+  const handleLogout = () => {
+    const user = userPool.getCurrentUser();
+    if (user) user.signOut();
+    setStep('login');
+    setUsername('');
+    setPassword('');
+    setCognitoUser(null);
+  };
+
   // step-based UI
   return (
     <>
@@ -248,7 +273,7 @@ export default function Login() {
             <>
               <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>Hello World!</h1>
               <p style={{ marginBottom: '2rem' }}>您已成功登入</p>
-              <button onClick={() => window.location.reload()} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>登出</button>
+              <button onClick={handleLogout} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>登出</button>
             </>
           )}
         </div>
