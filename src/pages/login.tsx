@@ -11,7 +11,7 @@ const userPool = new CognitoUserPool({
 });
 
 export default function Login() {
-  const [step, setStep] = useState<'login' | 'newPassword' | 'mfaSetup' | 'main'>('login');
+  const [step, setStep] = useState<'login' | 'newPassword' | 'mfaSetup' | 'mfaVerify' | 'main'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,6 +21,7 @@ export default function Login() {
   const [mfaSecret, setMfaSecret] = useState('');
   const [mfaQr, setMfaQr] = useState('');
   const [totpCode, setTotpCode] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   // 登入流程
@@ -49,16 +50,16 @@ export default function Login() {
         setStep('newPassword');
         setLoading(false);
       },
+      mfaSetup: () => {
+        setStep('mfaSetup');
+        setLoading(false);
+      },
       mfaRequired: () => {
-        showError('此帳號已啟用 MFA，請用 MFA 驗證頁面登入');
+        setStep('mfaVerify');
         setLoading(false);
       },
       totpRequired: () => {
-        showError('此帳號已啟用 MFA，請用 MFA 驗證頁面登入');
-        setLoading(false);
-      },
-      mfaSetup: () => {
-        setStep('mfaSetup');
+        setStep('mfaVerify');
         setLoading(false);
       }
     });
@@ -132,6 +133,22 @@ export default function Login() {
     });
   };
 
+  const handleVerifyMfa = () => {
+    if (!cognitoUser) return;
+    setLoading(true);
+    cognitoUser.sendMFACode(mfaCode, {
+      onSuccess: () => {
+        showSuccess('MFA 驗證成功');
+        setStep('main');
+        setLoading(false);
+      },
+      onFailure: (err) => {
+        showError('驗證失敗: ' + (err.message || '未知錯誤'));
+        setLoading(false);
+      }
+    }, 'SOFTWARE_TOKEN_MFA');
+  };
+
   // step-based UI
   return (
     <>
@@ -201,6 +218,30 @@ export default function Login() {
                 <input type="text" value={totpCode} onChange={e => setTotpCode(e.target.value)} style={{ width: '100%', padding: '0.85rem', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1.1rem', marginTop: '0.5rem', letterSpacing: '0.2em', textAlign: 'center' }} placeholder="請輸入 6 位數驗證碼" maxLength={6} disabled={loading} />
               </div>
               <button type="button" onClick={handleVerifyTotp} style={{ width: '100%', padding: '0.95rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontSize: '1.1rem', fontWeight: 'bold', marginTop: '0.5rem', marginBottom: '0.5rem', letterSpacing: '0.05em' }} disabled={!totpCode || loading}>{loading ? '驗證中...' : '啟用 MFA'}</button>
+            </>
+          )}
+          {step === 'mfaVerify' && (
+            <>
+              <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>MFA 驗證</h1>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <input
+                  type="text"
+                  value={mfaCode}
+                  onChange={e => setMfaCode(e.target.value)}
+                  style={{ width: '100%', padding: '0.85rem', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1.1rem', marginTop: '0.5rem', letterSpacing: '0.2em', textAlign: 'center' }}
+                  placeholder="請輸入 6 位數驗證碼"
+                  maxLength={6}
+                  disabled={loading}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleVerifyMfa}
+                style={{ width: '100%', padding: '0.95rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontSize: '1.1rem', fontWeight: 'bold', marginTop: '0.5rem', marginBottom: '0.5rem', letterSpacing: '0.05em' }}
+                disabled={!mfaCode || loading}
+              >
+                {loading ? '驗證中...' : '送出驗證碼'}
+              </button>
             </>
           )}
           {step === 'main' && (
