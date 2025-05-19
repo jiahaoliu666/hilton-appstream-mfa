@@ -823,29 +823,36 @@ export const useCognito = () => {
 
     try {
       const user = userPool.getCurrentUser();
+      console.log('setupTotpMfa: currentUser', user);
       if (!user) {
         throw new Error('用戶未登入');
+      }
+      const session = user.getSignInUserSession();
+      console.log('setupTotpMfa: user.getSignInUserSession()', session);
+      if (!session) {
+        throw new Error('CognitoUser session 無效，請重新登入');
       }
 
       // 關聯軟件令牌 (獲取 secret code)
       const secretCode = await new Promise<string>((resolve, reject) => {
         user.associateSoftwareToken({
           associateSecretCode: (secretCode) => {
+            console.log('associateSoftwareToken success, secretCode:', secretCode);
             resolve(secretCode);
           },
           onFailure: (err) => {
+            console.error('associateSoftwareToken error:', err);
             reject(err);
           }
         });
       });
 
       // 生成 QR 碼 URL
-      // 使用 otpauth URL 格式: otpauth://totp/[服務名稱]:[用戶名]?secret=[密鑰]&issuer=[服務名稱]
       const username = user.getUsername();
       const appName = cognitoConfig.appName || 'Hilton AppStream';
       const qrCodeUrl = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(username)}?secret=${secretCode}&issuer=${encodeURIComponent(appName)}`;
+      console.log('setupTotpMfa: qrCodeUrl', qrCodeUrl);
 
-      // 保存密鑰和 QR 碼 URL 到狀態
       setMfaSecret(secretCode);
       setMfaSecretQRCode(qrCodeUrl);
 
@@ -855,10 +862,8 @@ export const useCognito = () => {
         qrCodeUrl 
       };
     } catch (err) {
-      const cognitoError = err as CognitoError;
-      let errorMessage = '設置 TOTP MFA 失敗';
-
-      setError(errorMessage);
+      console.error('setupTotpMfa error:', err);
+      setError('設置 TOTP MFA 失敗: ' + (err instanceof Error ? err.message : '未知錯誤'));
       return { success: false };
     } finally {
       setLoading(false);

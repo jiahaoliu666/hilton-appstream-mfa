@@ -45,6 +45,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       router.pathname === '/mfa-setup' &&
       localStorage.getItem('cognito_mfa_setup_required') === 'true'
     ) {
+      // 直接允許渲染，不做任何 session 檢查
       return;
     }
     // 如果正在加載身份驗證狀態，不執行任何重定向

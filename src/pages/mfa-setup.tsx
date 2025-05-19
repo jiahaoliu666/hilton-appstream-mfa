@@ -17,80 +17,103 @@ export default function MfaSetup() {
   const { setupTotpMfa, verifyAndEnableTotpMfa } = useAuth();
 
   useEffect(() => {
-    const userPool = new CognitoUserPool({
-      UserPoolId: cognitoConfig.userPoolId,
-      ClientId: cognitoConfig.clientId
-    });
-    let user = userPool.getCurrentUser();
-    // 若 user 為 null，嘗試從 localStorage 還原 CognitoUser 實例
-    if (!user && typeof window !== 'undefined') {
-      const username = localStorage.getItem('cognito_username');
-      const challengeSession = localStorage.getItem('cognito_challenge_session');
-      if (username && challengeSession) {
-        // Cognito SDK 預期的 localStorage 結構
-        localStorage.setItem(
-          `CognitoIdentityServiceProvider.${cognitoConfig.clientId}.LastAuthUser`,
-          username
-        );
-        user = new CognitoUser({
-          Username: username,
-          Pool: userPool
-        });
+    const run = async () => {
+      const userPool = new CognitoUserPool({
+        UserPoolId: cognitoConfig.userPoolId,
+        ClientId: cognitoConfig.clientId
+      });
+      let user = userPool.getCurrentUser();
+      // 若 user 為 null，嘗試從 localStorage 還原 CognitoUser 實例
+      if (!user && typeof window !== 'undefined') {
+        const username = localStorage.getItem('cognito_username');
+        const challengeSession = localStorage.getItem('cognito_challenge_session');
+        if (username && challengeSession) {
+          localStorage.setItem(
+            `CognitoIdentityServiceProvider.${cognitoConfig.clientId}.LastAuthUser`,
+            username
+          );
+          user = new CognitoUser({
+            Username: username,
+            Pool: userPool
+          });
+          // 關鍵：還原 challengeName
+          try {
+            const sessionInfo = JSON.parse(challengeSession);
+            if (sessionInfo.challengeName) {
+              user.challengeName = sessionInfo.challengeName;
+            }
+            if (sessionInfo.authenticationFlowType) {
+              user.setAuthenticationFlowType(sessionInfo.authenticationFlowType);
+            }
+          } catch (e) {}
+        }
       }
-    }
-    if (!user) {
-      toast.dismiss();
-      setShowContent(false);
-      showError('登入狀態已失效，請重新登入');
-      setTimeout(() => {
-        router.replace('/login');
-      }, 1200);
-      return;
-    }
-    // 主動 signIn 取得 session
-    (async () => {
-      setLoading(true);
-      let sessionOk = false;
-      try {
+      // 進階修正：若 session 為 null，主動 signIn
+      if (!user || !user.getSignInUserSession()) {
         const username = localStorage.getItem('cognito_username');
         const password = localStorage.getItem('cognito_password');
         if (username && password) {
-          await new Promise((resolve, reject) => {
-            const authenticationDetails = new AuthenticationDetails({
-              Username: username,
-              Password: password
+          const authDetails = new AuthenticationDetails({ Username: username, Password: password });
+          user = new CognitoUser({ Username: username, Pool: userPool });
+          try {
+            await new Promise((resolve, reject) => {
+              user!.authenticateUser(authDetails, {
+                onSuccess: () => resolve(true),
+                onFailure: (err) => reject(err),
+                newPasswordRequired: () => reject(new Error('新密碼流程異常，請重新登入')),
+                mfaSetup: () => resolve(true)
+              });
             });
-            user!.authenticateUser(authenticationDetails, {
+          } catch (err) {
+            toast.dismiss();
+            setShowContent(false);
+            showError('您的登入狀態已失效，請重新登入後再設置 MFA');
+            setTimeout(() => {
+              router.replace('/login');
+            }, 1500);
+            return;
+          }
+        } else {
+          toast.dismiss();
+          setShowContent(false);
+          showError('您的登入狀態已失效，請重新登入後再設置 MFA');
+          setTimeout(() => {
+            router.replace('/login');
+          }, 1500);
+          return;
+        }
+      }
+      if (!user) return;
+      setLoading(true);
+      try {
+        const username = localStorage.getItem('cognito_username');
+        const password = localStorage.getItem('cognito_password');
+        // 若 CognitoUser 還在 NEW_PASSWORD_REQUIRED 狀態，則自動 completeNewPasswordChallenge
+        if (user && user['challengeName'] === 'NEW_PASSWORD_REQUIRED' && password) {
+          await new Promise((resolve, reject) => {
+            user.completeNewPasswordChallenge(password, {}, {
               onSuccess: () => resolve(true),
               onFailure: (err) => reject(err),
-              newPasswordRequired: () => reject(new Error('不應該再要求新密碼')),
-              mfaRequired: () => reject(new Error('不應該再要求 MFA')),
-              totpRequired: () => reject(new Error('不應該再要求 TOTP')),
               mfaSetup: () => resolve(true)
             });
           });
-          sessionOk = true;
         }
-      } catch (err) {
-        toast.dismiss();
-        setShowContent(false);
-        showError('登入狀態已失效，請重新登入');
-        setTimeout(() => {
-          router.replace('/login');
-        }, 1200);
-        return;
-      }
-      // 取得 session 後再呼叫 setupTotpMfa
-      if (sessionOk) {
+        // 取得 session 後再呼叫 setupTotpMfa
         const result = await setupTotpMfa();
         if (result.success && result.qrCodeUrl) {
           setSetupData({ qrCodeUrl: result.qrCodeUrl });
         } else {
           showError('無法產生 QRCode，請稍後再試');
         }
+      } catch (err) {
+        showError('MFA 設置流程失敗: ' + (err instanceof Error ? err.message : '未知錯誤'));
+        setTimeout(() => {
+          router.replace('/login');
+        }, 1500);
       }
       setLoading(false);
-    })();
+    };
+    run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
