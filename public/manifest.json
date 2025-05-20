@@ -1,0 +1,15 @@
+{
+  "name": "Hilton AppStream",
+  "short_name": "AppStream",
+  "description": "Hilton AppStream 客戶端",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1976d2",
+  "protocol_handlers": [
+    {
+      "protocol": "hilton-appstream",
+      "url": "/launch-app?url=%s"
+    }
+  ]
+} 

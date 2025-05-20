@@ -1,7 +1,10 @@
 hilton-appstream-mfa/
+├── public/
+│   ├── manifest.json # AppStream 應用程式配置
 ├── src/
 │   ├── components/
-│   │   ├── appstream/
+│   │   ├── streaming/
+│   │   │   └── StreamingModeSelector.tsx # 串流模式選擇器
 │   │   └── auth/
 │   │       ├── AuthContext.tsx      # AWS Cognito 身份驗證上下文
 │   │       └── ProtectedRoute.tsx   # 路由保護組件
@@ -13,16 +16,34 @@ hilton-appstream-mfa/
 │   │   └── hooks/
 │   │   │    └── useCognito.ts        # Cognito 功能自定義 Hook
 │   │   │    └── useSecurityMonitor.ts # 安全監控 Hook
-│   │   └── utils/
-│   │       └── notification.ts      # 通知功能
-│   │       └── constants.ts         # 常量
+│   │   └── services/
+│   │       └── appStreamService.ts # AppStream 服務
 │   ├── pages/
 │   │   └── _app.tsx                 # 應用入口
 │   │   └── index.tsx                # 首頁
 │   │   └── login.tsx                # 登入頁面 
- src/pages/404.tsx
+│   │   └── 404.tsx                  # 404頁面
+│   ├── utils/
+│   │   └── notification.ts          # 通知功能
+│   │   └── constants.ts             # 常量
 │   └── styles/
 │       └── globals.css              # 全局樣式
+
+
+=============================================== 進行中
+
+根據方才給你的這四個代碼，我要導入到我當前的專案中，同時不要編輯到這四份檔案，意思是在我當前的專案中另外建立符合此專案的代碼
+此專案的需求為：
+1. 用戶通過 Cognito 登入系統 (已實現)
+2. 登入後會自動跳轉到首頁，且首頁會有兩個按鈕：
+Web 模式：直接跳轉到串流 URL
+APP 模式：生成串流 URL 並啟動本地應用程式
+
+現在要完成第二步驟的部分，主要是完成web模式和app模式，並符合最佳實踐和官方推薦流程
+
+
+
+
 
 
 ===============================================
@@ -122,15 +143,10 @@ hilton-appstream-mfa
 1. 前端 Next.js 
 2. 使用 Cognito 進行登入驗證
 3. 添加 MFA
-4. 忘記密碼
-5. 使用 AWS SDK for JavaScript v3 串 Appstream 功能
-6. Web、App Mode
-7. Env 放在 Amplify 的 Securt 中
-8. 最後成功後部署到 Amplify 
-
----------------已改
-解決當用戶初次輸入帳密並訪問 change-password 頁面時重整頁面就會自動重定向回 login 頁面的問題
-
+4. 使用 AWS SDK for JavaScript v3 串 Appstream 功能
+5. Web、App Mode
+6. Env 放在 Amplify 的 Securt 中
+7. 最後成功後部署到 Amplify 
 
 ---------------需求
 登入介面

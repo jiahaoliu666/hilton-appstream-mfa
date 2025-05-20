@@ -1,9 +1,10 @@
-import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { CognitoUserPool } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
+import { StreamingModeSelector } from '@/components/streaming/StreamingModeSelector';
+import { showError } from '@/utils/notification';
 
 const userPool = new CognitoUserPool({
   UserPoolId: cognitoConfig.userPoolId,
@@ -56,12 +57,12 @@ export default function Home() {
     router.push('/login');
   };
 
-  const handleMfaSetup = () => {
-    router.push('/mfa-setup');
-  };
-
   if (loading) {
-    return <div>載入中...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-lg text-gray-600">載入中...</div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -69,32 +70,26 @@ export default function Home() {
   }
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column',
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100vh',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <h1>Hello World!</h1>
-      <p style={{ marginBottom: '2rem' }}>您已成功登入</p>
-      
-      <button 
-        onClick={handleLogout}
-        style={{
-          padding: '0.75rem 1.5rem',
-          backgroundColor: '#f44336',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          fontWeight: 'bold'
-        }}
-      >
-        登出
-      </button>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Hilton AppStream</h1>
+          <p className="text-gray-600">請選擇您想要的串流模式</p>
+        </div>
+
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <StreamingModeSelector />
+          
+          <div className="mt-6">
+            <button
+              onClick={handleLogout}
+              className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              登出
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
