@@ -6,6 +6,8 @@ import { cognitoConfig } from '@/lib/config/cognito';
 import { StreamingModeSelector } from '@/components/streaming/StreamingModeSelector';
 import { showError } from '@/utils/notification';
 
+import Head from 'next/head';
+
 const userPool = new CognitoUserPool({
   UserPoolId: cognitoConfig.userPoolId,
   ClientId: cognitoConfig.clientId
@@ -70,26 +72,31 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Hilton AppStream</h1>
-          <p className="text-gray-600">請選擇您想要的串流模式</p>
-        </div>
+    <>
+      <Head>
+        <title>Hilton AppStream</title>
+      </Head>
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Hilton AppStream</h1>
+            <p className="text-gray-600">請選擇您想要的串流模式</p>
+          </div>
 
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <StreamingModeSelector />
-          
-          <div className="mt-6">
-            <button
-              onClick={handleLogout}
-              className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              登出
-            </button>
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <StreamingModeSelector />
+            
+            <div className="mt-6">
+              <button
+                onClick={handleLogout}
+                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                登出
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
