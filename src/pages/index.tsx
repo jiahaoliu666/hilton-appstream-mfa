@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { CognitoUserPool } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
-import { StreamingModeSelector } from '@/components/streaming/StreamingModeSelector';
+import { StreamingModeSelector } from '@/components/appstream/StreamingModeSelector';
 import { showError } from '@/utils/notification';
 
 import Head from 'next/head';

@@ -28,6 +28,8 @@ export type MFAType = 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA' | 'SELECT_MFA_TYPE' | 'NO
 export const useCognito = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<CognitoUser | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [newPasswordRequired, setNewPasswordRequired] = useState<boolean>(() => {
     // 檢查 localStorage 中是否有設置需要新密碼的標記
     if (typeof window !== 'undefined') {
@@ -41,6 +43,48 @@ export const useCognito = () => {
   const [mfaRequired, setMfaRequired] = useState<boolean>(false);
   const [mfaSecret, setMfaSecret] = useState<string>('');
   const [mfaSecretQRCode, setMfaSecretQRCode] = useState<string>('');
+
+  // 檢查用戶認證狀態
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const currentUser = userPool.getCurrentUser();
+      if (currentUser) {
+        const session = await new Promise<CognitoUserSession | null>((resolve, reject) => {
+          currentUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(session);
+            }
+          });
+        });
+
+        if (session && session.isValid()) {
+          setUser(currentUser);
+          setIsAuthenticated(true);
+          setCurrentCognitoUser(currentUser);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+          setCurrentCognitoUser(null);
+        }
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        setCurrentCognitoUser(null);
+      }
+    } catch (err) {
+      console.error('檢查認證狀態時發生錯誤:', err);
+      setUser(null);
+      setIsAuthenticated(false);
+      setCurrentCognitoUser(null);
+    }
+  }, []);
+
+  // 在組件掛載時檢查認證狀態
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   // 清除 MFA 相關狀態
   const clearMfaState = useCallback(() => {
@@ -1050,104 +1094,11 @@ export const useCognito = () => {
     }
   }, []);
 
-  // 在組件掛載時檢查用戶的身份驗證狀態
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      if (typeof window !== 'undefined') {
-        // 檢查會話狀態
-        const isSessionValid = localStorage.getItem('cognito_session_valid') === 'true';
-        const lastSessionTime = parseInt(localStorage.getItem('cognito_last_session_time') || '0');
-        const sessionAge = Date.now() - lastSessionTime;
-        const isSessionExpired = sessionAge > 24 * 60 * 60 * 1000; // 24小時過期
-
-        // 如果會話已過期，清除所有狀態
-        if (isSessionExpired) {
-          localStorage.removeItem('cognito_session_valid');
-          localStorage.removeItem('cognito_last_session_time');
-          localStorage.removeItem('cognito_id_token');
-          localStorage.removeItem('cognito_access_token');
-          localStorage.removeItem('cognito_refresh_token');
-          return;
-        }
-
-        // 檢查是否需要新密碼
-        if (localStorage.getItem('cognito_new_password_required') === 'true') {
-          // 如果有儲存的用戶名，嘗試恢復 CognitoUser 實例
-          const username = localStorage.getItem('cognito_username');
-          if (username) {
-            const cognitoUser = new CognitoUser({
-              Username: username,
-              Pool: userPool
-            });
-            
-            // 嘗試恢復挑戰會話狀態
-            const challengeSessionData = localStorage.getItem('cognito_challenge_session');
-            if (challengeSessionData) {
-              try {
-                const sessionInfo = JSON.parse(challengeSessionData);
-                if (sessionInfo.authenticationFlowType) {
-                  cognitoUser.setAuthenticationFlowType(sessionInfo.authenticationFlowType);
-                }
-                // 設置挑戰名稱
-                cognitoUser.challengeName = 'NEW_PASSWORD_REQUIRED';
-              } catch (e) {
-                console.error('解析會話數據失敗:', e);
-              }
-            }
-            
-            setCurrentCognitoUser(cognitoUser);
-          }
-          setNewPasswordRequired(true);
-        }
-        
-        // 檢查是否需要 MFA 驗證
-        if (localStorage.getItem('cognito_mfa_required') === 'true') {
-          const username = localStorage.getItem('cognito_username');
-          const mfaTypeValue = localStorage.getItem('cognito_mfa_type') as MFAType || 'SMS_MFA';
-          
-          if (username) {
-            const cognitoUser = new CognitoUser({
-              Username: username,
-              Pool: userPool
-            });
-            
-            setCurrentCognitoUser(cognitoUser);
-            setMfaRequired(true);
-            setMfaType(mfaTypeValue);
-          }
-        }
-
-        // 如果有有效的會話，嘗試恢復用戶狀態
-        if (isSessionValid) {
-          const currentUser = userPool.getCurrentUser();
-          if (currentUser) {
-            currentUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
-              if (err) {
-                console.error('獲取會話失敗:', err);
-                // 清除無效的會話狀態
-                localStorage.removeItem('cognito_session_valid');
-                localStorage.removeItem('cognito_last_session_time');
-                return;
-              }
-              if (session && session.isValid()) {
-                setCurrentCognitoUser(currentUser);
-                // 更新會話時間戳
-                localStorage.setItem('cognito_last_session_time', Date.now().toString());
-              } else {
-                // 會話無效，清除狀態
-                localStorage.removeItem('cognito_session_valid');
-                localStorage.removeItem('cognito_last_session_time');
-              }
-            });
-          }
-        }
-      }
-    };
-    
-    checkAuthStatus();
-  }, []);
-
   return {
+    user,
+    isAuthenticated,
+    loading,
+    error,
     signIn,
     signOut,
     signUp,
@@ -1157,9 +1108,6 @@ export const useCognito = () => {
     getCurrentUser,
     getCurrentSession,
     getJwtToken,
-    loading,
-    error,
-    newPasswordRequired,
     cancelNewPasswordChallenge,
     // MFA 相關函數和狀態
     mfaRequired,
@@ -1172,6 +1120,8 @@ export const useCognito = () => {
     setupSmsMfa,
     disableMfa,
     mfaSecret,
-    mfaSecretQRCode
+    mfaSecretQRCode,
+    // 添加 newPasswordRequired 狀態
+    newPasswordRequired
   };
 }; 

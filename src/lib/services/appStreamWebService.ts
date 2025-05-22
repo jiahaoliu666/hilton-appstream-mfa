@@ -1,6 +1,5 @@
 import { AppStreamClient, CreateStreamingURLCommand } from "@aws-sdk/client-appstream";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import apiClient from '../api/apiClient';
 
 export interface StreamingResponse {
   streamingUrl: string;
@@ -16,7 +15,7 @@ export interface IdentityResponse {
   IdentityId: string;
 }
 
-export const appStreamService = {
+export const appStreamWebService = {
   // 獲取身份 ID
   getId: async (identityPoolId: string, loginProvider: string, idToken: string): Promise<IdentityResponse> => {
     try {
@@ -79,34 +78,6 @@ export const appStreamService = {
       return { streamingUrl: response.StreamingURL || '' };
     } catch (error) {
       console.error('獲取 Web 串流 URL 失敗:', error);
-      throw error;
-    }
-  },
-
-  // 獲取 APP 串流 URL
-  getAppStreamingURL: async (email: string, credentials: CredentialsResponse): Promise<StreamingResponse> => {
-    try {
-      const client = new AppStreamClient({
-        region: process.env.NEXT_PUBLIC_AWS_REGION,
-        credentials: {
-          accessKeyId: credentials.accessKeyId,
-          secretAccessKey: credentials.secretAccessKey,
-          sessionToken: credentials.sessionToken
-        }
-      });
-
-      const command = new CreateStreamingURLCommand({
-        StackName: process.env.NEXT_PUBLIC_APPSTREAM_STACK_NAME,
-        FleetName: process.env.NEXT_PUBLIC_APPSTREAM_FLEET_NAME,
-        UserId: email,
-        ApplicationId: process.env.NEXT_PUBLIC_APPSTREAM_APPLICATION_ID,
-        Validity: 3600 // URL 有效期為 1 小時
-      });
-
-      const response = await client.send(command);
-      return { streamingUrl: response.StreamingURL || '' };
-    } catch (error) {
-      console.error('獲取 APP 串流 URL 失敗:', error);
       throw error;
     }
   }

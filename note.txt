@@ -4,7 +4,6 @@ hilton-appstream-mfa/
 ├── src/
 │   ├── components/
 │   │   ├── appstream/
-│   │   ├── streaming/
 │   │   │   ├── StreamingModeSelector.tsx # 串流模式選擇器
 │   │   └── auth/
 │   │       ├── AuthContext.tsx      # AWS Cognito 身份驗證上下文
@@ -19,6 +18,8 @@ hilton-appstream-mfa/
 │   │   │    └── useSecurityMonitor.ts # 安全監控 Hook
 │   │   └── services/
 │   │       └── appStreamService.ts # AppStream 服務
+│   │       └── appStreamWebService.ts # AppStream Web 服務
+│   │       └── appStreamAppService.ts # AppStream App 服務
 │   ├── pages/
 │   │   └── _app.tsx                 # 應用入口
 │   │   └── index.tsx                # 首頁
@@ -39,6 +40,10 @@ Amazon AppStream 2.0 雙模式訪問功能：
 當點擊 Web 模式按鈕：在瀏覽器新增一個新分頁，並直接通過瀏覽器直接訪問 AppStream 虛擬桌面
 當點擊 APP 模式按鈕：自動生成 AppStream 串流 URL 並自動啟用 Amazon AppStream 客戶端應用程式
 
+Web 模式按鈕：
+使用 AWS SDK for JavaScript v3 的 CreateStreamingURL API 生成串流 URL
+然後當點擊 web 模式的按鈕後在新瀏覽器分頁中開啟此 URL，讓用戶直接在瀏覽器中訪問 AppStream 2.0 虛擬桌面
+
 備註：
 1. 使用 AWS SDK for JavaScript v3 串 Appstream 功能
 2. 先幫我完成 Web 模式功能就好
@@ -46,7 +51,6 @@ Amazon AppStream 2.0 雙模式訪問功能：
 
 haoder7416@gmail.com
 @Qaz12345
-
 
 ---------------需求
 登入介面
