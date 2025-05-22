@@ -3,8 +3,9 @@ hilton-appstream-mfa/
 │   ├── manifest.json # AppStream 應用程式配置
 ├── src/
 │   ├── components/
+│   │   ├── appstream/
 │   │   ├── streaming/
-│   │   │   └── StreamingModeSelector.tsx # 串流模式選擇器
+│   │   │   ├── StreamingModeSelector.tsx # 串流模式選擇器
 │   │   └── auth/
 │   │       ├── AuthContext.tsx      # AWS Cognito 身份驗證上下文
 │   │       └── ProtectedRoute.tsx   # 路由保護組件
@@ -32,121 +33,20 @@ hilton-appstream-mfa/
 
 =============================================== 進行中
 
-根據方才給你的這四個代碼，我要導入到我當前的專案中，同時不要編輯到這四份檔案，意思是在我當前的專案中另外建立符合此專案的代碼
-此專案的需求為：
-1. 用戶通過 Cognito 登入系統 (已實現)
-2. 登入後會自動跳轉到首頁，且首頁會有兩個按鈕：
-Web 模式：直接跳轉到串流 URL
-APP 模式：生成串流 URL 並啟動本地應用程式
+Amazon AppStream 2.0 雙模式訪問功能：
+要在 Next.js 的 Web 應用程式中實現 Amazon AppStream 2.0 的雙模式訪問（Web 模式和 APP 模式），並符合官方最佳實踐及最佳流程，該如何實現？
+在主應用程式頁面當中有兩個專門用於訪問 Amazon AppStream 2.0 服務按鈕，並提供兩種串流模式：
+當點擊 Web 模式按鈕：在瀏覽器新增一個新分頁，並直接通過瀏覽器直接訪問 AppStream 虛擬桌面
+當點擊 APP 模式按鈕：自動生成 AppStream 串流 URL 並自動啟用 Amazon AppStream 客戶端應用程式
 
-現在要完成第二步驟的部分，主要是完成web模式和app模式，並符合最佳實踐和官方推薦流程
-
-
-
-
-
-
-===============================================
-ProtectedRoute.tsx
-===============================================
-1. 未登入用戶重定向到登入頁面
-2. 需要設置新密碼的用戶重定向到密碼設置頁面
-3. 首次登入用戶需要完成安全設置流程
-4. MFA 驗證流程的處理
-5. 已登入用戶訪問公開頁面的處理
-===============================================
-useSecurityMonitor.ts # 安全監控 Hook
-===============================================
-1. 當用戶在首次登入流程中離開頁面時，會自動清除所有憑證
-2. 如果用戶 10 分鐘內沒有任何活動，會自動清除憑證並返回登入頁面
-3. 當用戶點擊返回按鈕時，會清除所有憑證並返回登入頁面
-4. 所有這些操作都會在首次登入流程中觸發，確保敏感認證階段的安全性
-===============================================
-constants.ts # 常量
-===============================================
-集中管理所有路徑常量
-使代碼更容易維護和修改
-===============================================
-
-
-
-
+備註：
+1. 使用 AWS SDK for JavaScript v3 串 Appstream 功能
+2. 先幫我完成 Web 模式功能就好
 ------------
-
-localhost:3000/change-password
 
 haoder7416@gmail.com
 @Qaz12345
 
-------------
-我要做一個使用 AWS Amplify 和 Next.js 開發的應用程式，專門用於訪問 Amazon AppStream 2.0 服務。此應用程式要具有以下特點：
-
-1. 前端使用 Next.js 框架開發，提供登入頁面，並且串接 Cognito 做登入驗證
-2. 登入驗證成功後要讓用戶重新更改新密碼
-3. 更改新密碼後也串接 Cognito要讓用戶綁定 MFA
-4. 更改新密碼和綁定 MFA 後重定向到登入介面
-5. 用戶使用新的密碼登入，並透過 MFA 成功驗證
-6. MFA 成功驗證後要進入主要的應用程式頁面
-7. 應用程式頁面當中有專門用於訪問 Amazon AppStream 2.0 服務按鈕，並提供兩種使用模式：
-Web 模式：通過瀏覽器直接訪問 AppStream 虛擬桌面
-APP 模式：自動生成 AppStream 串流 URL 並自動啟用 Amazon AppStream 客戶端應用程式
-
-根據此專案如何進行 AWS 估價
-------------
-
-我要做一個使用 AWS Amplify 和 Next.js 開發的多因素認證 (MFA) 應用程式，專門用於訪問 Amazon AppStream 2.0 服務。此應用程式要具有以下特點：
-
-1. 它使用 AWS Amplify 提供的認證服務，配置為必須使用多因素認證 (MFA)，包括基於時間的一次性密碼 (TOTP)。
-
-2. 前端使用 Next.js 框架開發，提供了登入頁面，支持用戶通過 Web 模式或 APP 模式訪問 Amazon AppStream 2.0 虛擬桌面。
-
-3. 當用戶通過多因素認證後，應用會從 AWS Cognito 獲取臨時憑證，然後使用這些憑證生成 Amazon AppStream 2.0 的串流 URL。
-
-4. Amazon AppStream 2.0 應用提供兩種使用模式：
-Web 模式：通過瀏覽器直接訪問 AppStream 虛擬桌面
-APP 模式：通過 Amazon AppStream 客戶端應用程式訪問，會自動複製串流 URL 到剪貼簿
-項目包含多個 API 端點，用於獲取憑證和生成 AppStream 串流 URL。
-總的來說，這是一個爲 Amazon AppStream 2.0 虛擬桌面服務提供嚴格多因素認證的安全登入門戶的應用程式。
-
-------------
-
-我要在 Next.js 應用中實作使用者登入功能，介面在login.tsx中，包含用戶名和密碼欄位。請提供使用 AWS SDK for JavaScript v3 整合 AWS Cognito 進行身份驗證的最佳實踐方式，並符合 Next.js 框架的架構原則和效能最佳化要求。
-
-------------
-
-我要做一個使用 AWS Amplify 和 Next.js 前端開發的多因素認證 (MFA) 應用程式，專門用於訪問 Amazon AppStream 2.0 服務。
-
-幫我根據以下項目製作簡潔有力的目錄結構：
-1. 首頁是登入介面 (使用 Next.js 前端)
-2. 登入後要有 MFA 驗證的機制和頁面 (使用 Next.js 前端結合 Cognito 服務)
-3. 成功登入後要進入到另外一個 Amazon AppStream 2.0 的頁面，此頁面要具有
-Web 模式：通過瀏覽器直接訪問 AppStream 虛擬桌面
-APP 模式：通過 Amazon AppStream 客戶端應用程式訪問，會自動複製串流 URL 到剪貼簿
-項目包含多個 API 端點，用於獲取憑證和生成 AppStream 串流 URL。
-以上兩種的功能使用 AWS SDK for JavaScript v3 
-
----------------
-
-Cognito
-hilton-dev-cognito-userpool
-
-應用程式名稱
-hilton-appstream-mfa
-
-Amplify
-hilton-appstream-mfa
-
----------------
-
-需求：做一個具有 MFA 功能的用戶登入介面，然後透過這登入介面訪問 Appstream2.0，要使用以下的功能
-
-1. 前端 Next.js 
-2. 使用 Cognito 進行登入驗證
-3. 添加 MFA
-4. 使用 AWS SDK for JavaScript v3 串 Appstream 功能
-5. Web、App Mode
-6. Env 放在 Amplify 的 Securt 中
-7. 最後成功後部署到 Amplify 
 
 ---------------需求
 登入介面

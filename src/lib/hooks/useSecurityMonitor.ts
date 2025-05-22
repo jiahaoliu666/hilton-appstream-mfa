@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
-import { showInfo } from '@/lib/utils/notification';
+import { showInfo } from '@/utils/notification';
 
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10分鐘，以毫秒為單位
 
