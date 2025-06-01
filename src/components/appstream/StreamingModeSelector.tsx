@@ -3,6 +3,7 @@ import { useCognito } from '@/lib/hooks/useCognito';
 import { appStreamWebService } from '@/lib/services/appStreamWebService';
 import { appStreamAppService } from '@/lib/services/appStreamAppService';
 import { CognitoUserSession } from 'amazon-cognito-identity-js';
+import { showError } from '@/utils/notification';
 
 export const StreamingModeSelector = () => {
   const { user, isAuthenticated } = useCognito();
@@ -85,10 +86,18 @@ export const StreamingModeSelector = () => {
       const email = await getUserEmail();
       if (email.length > 32) throw new Error('email 長度超過 32 字元，無法作為 UserId');
       const response = await appStreamAppService.getAppStreamingURL(email, credentials);
-      window.location.href = response.streamingUrl;
+      // 將 https:// 轉成 amazonappstream://
+      const appstreamClientUrl = response.streamingUrl.replace(/^https:/, 'amazonappstream:');
+
+      // 嘗試協定跳轉，若未安裝則顯示 toast
+      const timeout = setTimeout(() => {
+        showError('未偵測到 Amazon AppStream 2.0 客戶端，請先安裝官方客戶端再使用 App 模式。');
+      }, 1500);
+      window.location.href = appstreamClientUrl;
+      // 若有安裝，頁面會離開，不會執行 timeout
     } catch (error) {
       console.error('App 模式啟動失敗:', error);
-      alert('App 模式啟動失敗，請稍後再試');
+      showError('App 模式啟動失敗，請稍後再試');
     } finally {
       setIsLoading(false);
     }
