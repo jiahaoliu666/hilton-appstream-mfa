@@ -86,8 +86,11 @@ export const StreamingModeSelector = () => {
       const email = await getUserEmail();
       if (email.length > 32) throw new Error('email 長度超過 32 字元，無法作為 UserId');
       const response = await appStreamAppService.getAppStreamingURL(email, credentials);
-      // 將 https:// 轉成 amazonappstream://
-      const appstreamClientUrl = response.streamingUrl.replace(/^https:/, 'amazonappstream:');
+
+      // 先 base64 encode streamingUrl
+      const base64Url = btoa(response.streamingUrl);
+      // 用 amazonappstream: 協定開頭
+      const appstreamClientUrl = `amazonappstream:${base64Url}`;
 
       // 嘗試協定跳轉，若未安裝則顯示 toast
       const timeout = setTimeout(() => {
