@@ -50,11 +50,25 @@ export const StreamingModeSelector = () => {
     return credentialsResponse;
   };
 
+  const getUserEmail = async () => {
+    return new Promise<string>((resolve, reject) => {
+      if (!user) return reject('用戶不存在');
+      user.getUserAttributes((err, attributes) => {
+        if (err) return reject('無法取得用戶屬性');
+        const emailAttr = attributes?.find(attr => attr.getName() === 'email');
+        if (!emailAttr) return reject('找不到 email 屬性');
+        resolve(emailAttr.getValue());
+      });
+    });
+  };
+
   const handleWebMode = async () => {
     try {
       setIsLoading(true);
       const credentials = await getCredentials();
-      const response = await appStreamWebService.getWebStreamingURL(user?.getUsername() || '', credentials);
+      const email = await getUserEmail();
+      if (email.length > 32) throw new Error('email 長度超過 32 字元，無法作為 UserId');
+      const response = await appStreamWebService.getWebStreamingURL(email, credentials);
       window.open(response.streamingUrl, '_blank');
     } catch (error) {
       console.error('Web 模式啟動失敗:', error);
@@ -68,7 +82,9 @@ export const StreamingModeSelector = () => {
     try {
       setIsLoading(true);
       const credentials = await getCredentials();
-      const response = await appStreamAppService.getAppStreamingURL(user?.getUsername() || '', credentials);
+      const email = await getUserEmail();
+      if (email.length > 32) throw new Error('email 長度超過 32 字元，無法作為 UserId');
+      const response = await appStreamAppService.getAppStreamingURL(email, credentials);
       window.location.href = response.streamingUrl;
     } catch (error) {
       console.error('App 模式啟動失敗:', error);
