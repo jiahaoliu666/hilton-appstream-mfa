@@ -92,12 +92,8 @@ export const StreamingModeSelector = () => {
       // 用 amazonappstream: 協定開頭
       const appstreamClientUrl = `amazonappstream:${base64Url}`;
 
-      // 嘗試協定跳轉，若未安裝則顯示 toast
-      const timeout = setTimeout(() => {
-        showError('未偵測到 Amazon AppStream 2.0 客戶端，請先安裝官方客戶端再使用 App 模式。');
-      }, 1500);
+      // 直接進行協定跳轉
       window.location.href = appstreamClientUrl;
-      // 若有安裝，頁面會離開，不會執行 timeout
     } catch (error) {
       console.error('App 模式啟動失敗:', error);
       showError('App 模式啟動失敗，請稍後再試');
