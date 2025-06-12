@@ -36,4 +36,5 @@ export const COGNITO_ERROR_CODES = {
   INVALID_PARAMETER: 'InvalidParameterException',
   CODE_MISMATCH: 'CodeMismatchException',
   EXPIRED_CODE: 'ExpiredCodeException',
+  CLIENT_NOT_FOUND: 'ClientNotFoundException',
 } as const; 

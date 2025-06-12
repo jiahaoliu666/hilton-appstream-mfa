@@ -90,7 +90,16 @@ export const showWarning = (message: string, options?: NotificationOptions) => {
 /**
  * Cognito 錯誤消息映射
  */
-export const mapCognitoErrorToMessage = (errorCode: string): string => {
+export const mapCognitoErrorToMessage = (errorCode: string, errorMessage?: string): string => {
+  // 新增：針對 user pool client 不存在的情境
+  if (
+    errorMessage &&
+    errorMessage.includes('User pool client') &&
+    errorMessage.includes('does not exist')
+  ) {
+    return '系統配置錯誤：請通知工程師團隊設置正確的環境變數';
+  }
+
   const errorMessages: Record<string, string> = {
     [COGNITO_ERROR_CODES.USER_NOT_FOUND]: '查無此用戶，請向系統管理員註冊',
     [COGNITO_ERROR_CODES.NOT_AUTHORIZED]: '查無此用戶，或密碼不正確',
@@ -103,6 +112,7 @@ export const mapCognitoErrorToMessage = (errorCode: string): string => {
     [COGNITO_ERROR_CODES.INVALID_PARAMETER]: '輸入參數無效',
     [COGNITO_ERROR_CODES.CODE_MISMATCH]: '驗證碼不正確',
     [COGNITO_ERROR_CODES.EXPIRED_CODE]: '驗證碼已過期',
+    [COGNITO_ERROR_CODES.CLIENT_NOT_FOUND]: '系統配置錯誤：請通知工程師團隊設置正確的環境變數',
   };
 
   return errorMessages[errorCode] || '發生未知錯誤，請稍後再試';

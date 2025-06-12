@@ -73,7 +73,7 @@ export const StreamingModeSelector = () => {
       window.open(response.streamingUrl, '_blank');
     } catch (error) {
       console.error('Web 模式啟動失敗:', error);
-      alert('Web 模式啟動失敗，請稍後再試');
+      showError('Web 模式啟動失敗，請通知工程師團隊協助處理');
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +96,7 @@ export const StreamingModeSelector = () => {
       window.location.href = appstreamClientUrl;
     } catch (error) {
       console.error('App 模式啟動失敗:', error);
-      showError('App 模式啟動失敗，請稍後再試');
+      showError('App 模式啟動失敗，請通知工程師團隊協助處理');
     } finally {
       setIsLoading(false);
     }

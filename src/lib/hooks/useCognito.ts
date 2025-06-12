@@ -302,7 +302,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return { success: false, setupRequired: false };
     } finally {
       setLoading(false);
@@ -359,7 +359,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return { success: false };
     } finally {
       setLoading(false);
@@ -424,7 +424,7 @@ export const useCognito = () => {
       let errorMessage = '選擇 MFA 類型時發生錯誤';
 
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return { success: false };
     } finally {
       setLoading(false);
@@ -538,7 +538,7 @@ export const useCognito = () => {
       console.log('新密碼設置完成，並獲得有效會話');
       return { success: true, session };
     } catch (err) {
-      const cognitoError = err as Error;
+      const cognitoError = err as CognitoError;
       let errorMessage = '設置新密碼過程發生錯誤';
 
       console.error('completeNewPassword 錯誤詳情:', cognitoError);
@@ -570,7 +570,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
-      showError(errorMessage + ': ' + cognitoError.message);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message) + ': ' + cognitoError.message);
       return { success: false };
     } finally {
       setLoading(false);
@@ -710,7 +710,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return { success: false };
     } finally {
       setLoading(false);
@@ -748,7 +748,7 @@ export const useCognito = () => {
         : (cognitoError.message || '重置密碼過程發生錯誤');
       
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return false;
     } finally {
       setLoading(false);
@@ -790,7 +790,7 @@ export const useCognito = () => {
         : (cognitoError.message || '確認新密碼過程發生錯誤');
       
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return false;
     } finally {
       setLoading(false);
@@ -977,7 +977,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return { success: false };
     } finally {
       setLoading(false);
@@ -1033,7 +1033,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return { success: false };
     } finally {
       setLoading(false);
@@ -1087,7 +1087,7 @@ export const useCognito = () => {
       }
 
       setError(errorMessage);
-      showError(errorMessage);
+      showError(mapCognitoErrorToMessage(cognitoError.code, cognitoError.message));
       return { success: false };
     } finally {
       setLoading(false);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
-import { showError, showSuccess } from '@/utils/notification';
+import { showError, showSuccess, mapCognitoErrorToMessage } from '@/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/router';
 
@@ -91,7 +91,9 @@ export default function Login() {
         setStep('main');
       },
       onFailure: (err) => {
-        showError(err.message || '登入失敗');
+        const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
+        const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
+        showError(mapCognitoErrorToMessage(code, message) || '登入失敗');
         setLoading(false);
       },
       newPasswordRequired: () => {
@@ -129,7 +131,9 @@ export default function Login() {
         setLoading(false);
       },
       onFailure: (err) => {
-        showError(err.message || '設置新密碼失敗');
+        const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
+        const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
+        showError(mapCognitoErrorToMessage(code, message) || '設置新密碼失敗');
         setLoading(false);
       },
       mfaSetup: () => {
@@ -151,7 +155,9 @@ export default function Login() {
         setLoading(false);
       },
       onFailure: (err) => {
-        showError('無法產生 QRCode: ' + (err.message || '未知錯誤'));
+        const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
+        const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
+        showError('無法產生 QRCode: ' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
         setLoading(false);
       }
     });
@@ -175,7 +181,9 @@ export default function Login() {
         });
       },
       onFailure: (err) => {
-        showError('驗證失敗: ' + (err.message || '未知錯誤'));
+        const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
+        const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
+        showError('驗證失敗: ' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
         setLoading(false);
       }
     });
@@ -191,7 +199,9 @@ export default function Login() {
         setLoading(false);
       },
       onFailure: (err) => {
-        showError('驗證失敗: ' + (err.message || '未知錯誤'));
+        const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
+        const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
+        showError('驗證失敗: ' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
         setLoading(false);
       }
     }, 'SOFTWARE_TOKEN_MFA');
