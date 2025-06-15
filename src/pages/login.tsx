@@ -230,185 +230,262 @@ export default function Login() {
         <title>Hilton AppStream 登入系統</title>
         <meta name="description" content="AppStream 登入系統" />
       </Head>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: '400px', padding: '2rem', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
-          {step === 'login' && (
-            <>
-              <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>登入</h1>
-              <form onSubmit={handleLogin}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label htmlFor="username" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>電子郵件</label>
-                  <input type="text" id="username" name="username" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', border: '1px solid #ccc' }} placeholder="請輸入您的電子郵件" disabled={loading} />
-                </div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>密碼</label>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input type={showPassword ? "text" : "password"} id="password" name="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '0.75rem', paddingRight: '2.5rem', borderRadius: '4px', border: '1px solid #ccc' }} placeholder="請輸入您的密碼" disabled={loading} />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.75rem', background: 'none', border: 'none', padding: '0.25rem', cursor: 'pointer', color: '#666' }}>
-                      {showPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                      )}
-                    </button>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="p-8">
+              {step === 'login' && (
+                <>
+                  <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">歡迎回來</h1>
+                    <p className="text-gray-600">請登入您的帳號</p>
                   </div>
-                </div>
-                <button type="submit" style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }} disabled={loading}>{loading ? '登入中...' : '登入'}</button>
-              </form>
-            </>
-          )}
-          {step === 'newPassword' && (
-            <>
-              <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>設置新密碼</h1>
-              <form onSubmit={handleCompleteNewPassword}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>新密碼</label>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input 
-                      type={showNewPassword ? "text" : "password"} 
-                      value={newPassword} 
-                      onChange={(e) => setNewPassword(e.target.value)} 
-                      style={{ width: '100%', padding: '0.75rem', paddingRight: '2.5rem', borderRadius: '4px', border: '1px solid #ccc' }} 
-                      placeholder="請輸入新密碼" 
-                      disabled={loading} 
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowNewPassword(!showNewPassword)} 
-                      style={{ position: 'absolute', right: '0.75rem', background: 'none', border: 'none', padding: '0.25rem', cursor: 'pointer', color: '#666' }}
-                    >
-                      {showNewPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>確認新密碼</label>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input 
-                      type={showConfirmNewPassword ? "text" : "password"} 
-                      value={confirmNewPassword} 
-                      onChange={(e) => setConfirmNewPassword(e.target.value)} 
-                      style={{ width: '100%', padding: '0.75rem', paddingRight: '2.5rem', borderRadius: '4px', border: '1px solid #ccc' }} 
-                      placeholder="請再次輸入新密碼" 
-                      disabled={loading} 
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)} 
-                      style={{ position: 'absolute', right: '0.75rem', background: 'none', border: 'none', padding: '0.25rem', cursor: 'pointer', color: '#666' }}
-                    >
-                      {showConfirmNewPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                      )}
-                    </button>
-                  </div>
-                  {/* 密碼規則提示與匹配提示統一放在這裡 */}
-                  <div style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                    {checkPasswordRules(newPassword).map((rule) => (
-                      <div key={rule.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem', color: rule.satisfied ? '#4caf50' : '#666' }}>
-                        <span style={{ marginRight: '0.5rem' }}>
-                          {rule.satisfied ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
-                          )}
-                        </span>
-                        {rule.label}
-                      </div>
-                    ))}
-                    {/* 密碼不匹配提示預設顯示，根據狀態切換顏色與圖示 */}
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', color:
-                      confirmNewPassword.length === 0 ? '#666' :
-                      (newPassword === confirmNewPassword && confirmNewPassword.length > 0 ? '#4caf50' : '#f44336')
-                    }}>
-                      {newPassword === confirmNewPassword && confirmNewPassword.length > 0 ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}><circle cx="12" cy="12" r="10"></circle></svg>
-                      )}
-                      密碼不匹配
+                  <form onSubmit={handleLogin} className="space-y-6">
+                    <div>
+                      <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                        電子郵件
+                      </label>
+                      <input
+                        type="text"
+                        id="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        placeholder="請輸入您的電子郵件"
+                        disabled={loading}
+                      />
                     </div>
-                  </div>
-                </div>
-                <button 
-                  type="submit" 
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.75rem', 
-                    backgroundColor: '#1976d2', 
-                    color: 'white', 
-                    border: 'none', 
-                    borderRadius: '4px', 
-                    fontSize: '1rem', 
-                    fontWeight: 'bold', 
-                    cursor: loading ? 'not-allowed' : 'pointer', 
-                    opacity: loading ? 0.7 : 1 
-                  }} 
-                  disabled={loading}
-                >
-                  {loading ? '處理中...' : '設置新密碼'}
-                </button>
-              </form>
-            </>
-          )}
-          {step === 'mfaSetup' && (
-            <>
-              <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>設置驗證器 App MFA</h1>
-              {/* 自動產生 QRCode */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                {!mfaQr && (
-                  <div style={{ color: '#888', textAlign: 'center', marginBottom: '1rem' }}>載入中...</div>
-                )}
-              </div>
-              {mfaQr && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <QRCodeSVG value={mfaQr} size={120} level="H" includeMargin={true} />
-                  <div style={{ marginTop: '1rem', fontSize: '0.95rem', color: '#333' }}>請用驗證器 App 掃描 QR code</div>
-                </div>
+                    <div>
+                      <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                        密碼
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          id="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="請輸入您的密碼"
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          {showPassword ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                              <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? '登入中...' : '登入'}
+                    </button>
+                  </form>
+                </>
               )}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <input type="text" value={totpCode} onChange={e => setTotpCode(e.target.value)} style={{ width: '100%', padding: '0.85rem', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1.1rem', marginTop: '0.5rem', letterSpacing: '0.2em', textAlign: 'center' }} placeholder="請輸入 6 位數驗證碼" maxLength={6} disabled={loading} />
-              </div>
-              <button type="button" onClick={handleVerifyTotp} style={{ width: '100%', padding: '0.95rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontSize: '1.1rem', fontWeight: 'bold', marginTop: '0.5rem', marginBottom: '0.5rem', letterSpacing: '0.05em' }} disabled={!totpCode || loading}>{loading ? '驗證中...' : '啟用 MFA'}</button>
-            </>
-          )}
-          {step === 'mfaVerify' && (
-            <>
-              <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>MFA 驗證</h1>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <input
-                  type="text"
-                  value={mfaCode}
-                  onChange={e => setMfaCode(e.target.value)}
-                  style={{ width: '100%', padding: '0.85rem', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1.1rem', marginTop: '0.5rem', letterSpacing: '0.2em', textAlign: 'center' }}
-                  placeholder="請輸入 6 位數驗證碼"
-                  maxLength={6}
-                  disabled={loading}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleVerifyMfa}
-                style={{ width: '100%', padding: '0.95rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontSize: '1.1rem', fontWeight: 'bold', marginTop: '0.5rem', marginBottom: '0.5rem', letterSpacing: '0.05em' }}
-                disabled={!mfaCode || loading}
-              >
-                {loading ? '驗證中...' : '送出驗證碼'}
-              </button>
-            </>
-          )}
-          {step === 'main' && (
-            <>
-              <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>Hello World!</h1>
-              <p style={{ marginBottom: '2rem' }}>您已成功登入</p>
-              <button onClick={handleLogout} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>登出</button>
-            </>
-          )}
+
+              {step === 'newPassword' && (
+                <>
+                  <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">設置新密碼</h1>
+                    <p className="text-gray-600">請設置一個安全的新密碼</p>
+                  </div>
+                  <form onSubmit={handleCompleteNewPassword} className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        新密碼
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="請輸入新密碼"
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          {showNewPassword ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                              <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        確認新密碼
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmNewPassword ? "text" : "password"}
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="請再次輸入新密碼"
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          {showConfirmNewPassword ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                              <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {checkPasswordRules(newPassword).map((rule) => (
+                        <div key={rule.id} className="flex items-center text-sm">
+                          <span className={`mr-2 ${rule.satisfied ? 'text-green-500' : 'text-gray-400'}`}>
+                            {rule.satisfied ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </span>
+                          <span className={rule.satisfied ? 'text-green-600' : 'text-gray-500'}>
+                            {rule.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading || !isPasswordValid(newPassword) || newPassword !== confirmNewPassword}
+                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? '處理中...' : '設置新密碼'}
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {step === 'mfaSetup' && (
+                <>
+                  <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">設置驗證器 App</h1>
+                    <p className="text-gray-600">請使用驗證器 App 掃描 QR code</p>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="flex justify-center">
+                      {!mfaQr ? (
+                        <div className="text-gray-500">載入中...</div>
+                      ) : (
+                        <div className="bg-white p-4 rounded-lg shadow-sm">
+                          <QRCodeSVG value={mfaQr} size={200} level="H" includeMargin={true} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={totpCode}
+                        onChange={e => setTotpCode(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-center text-lg tracking-widest"
+                        placeholder="請輸入 6 位數驗證碼"
+                        maxLength={6}
+                        disabled={loading}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleVerifyTotp}
+                      disabled={!totpCode || loading}
+                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? '驗證中...' : '啟用 MFA'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {step === 'mfaVerify' && (
+                <>
+                  <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">MFA 驗證</h1>
+                    <p className="text-gray-600">請輸入驗證器 App 中的驗證碼</p>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <input
+                        type="text"
+                        value={mfaCode}
+                        onChange={e => setMfaCode(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-center text-lg tracking-widest"
+                        placeholder="請輸入 6 位數驗證碼"
+                        maxLength={6}
+                        disabled={loading}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleVerifyMfa}
+                      disabled={!mfaCode || loading}
+                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? '驗證中...' : '送出驗證碼'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {step === 'main' && (
+                <>
+                  <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">登入成功</h1>
+                    <p className="text-gray-600">歡迎使用 Hilton AppStream</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                  >
+                    登出
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </>
