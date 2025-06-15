@@ -11,20 +11,16 @@ export default function App({ Component, pageProps }: AppProps) {
         position="top-right"
         toastOptions={{
           duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
+          className: 'toast-base',
           success: {
-            style: {
-              background: '#4caf50',
-            },
+            className: 'toast-success'
           },
           error: {
-            style: {
-              background: '#f44336',
-            },
+            className: 'toast-error'
           },
+          loading: {
+            className: 'toast-loading'
+          }
         }}
       />
     </AuthProvider>
