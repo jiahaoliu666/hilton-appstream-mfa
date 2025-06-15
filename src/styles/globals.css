@@ -8,4 +8,11 @@ body {
   margin: 0;
   padding: 0;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.tracking-password {
+  letter-spacing: 0.35em;
+}
+.tracking-password::placeholder {
+  letter-spacing: normal !important;
 } 

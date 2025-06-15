@@ -280,9 +280,10 @@ export default function Login() {
                           id="password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                          className={`w-full pl-10 pr-12 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-left font-mono ${showPassword ? '' : 'tracking-password'}`}
                           placeholder="請輸入您的密碼"
                           disabled={loading}
+                          autoComplete="current-password"
                         />
                         <button
                           type="button"
