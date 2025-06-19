@@ -183,7 +183,7 @@ export default function Login() {
       onFailure: (err) => {
         const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
         const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
-        showError('驗證失敗: ' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
+        showError('驗證失敗：' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
         setLoading(false);
       }
     });
@@ -201,7 +201,7 @@ export default function Login() {
       onFailure: (err) => {
         const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
         const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
-        showError('驗證失敗: ' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
+        showError('驗證失敗：' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
         setLoading(false);
       }
     }, 'SOFTWARE_TOKEN_MFA');
