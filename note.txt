@@ -5,6 +5,9 @@ hilton-appstream-mfa/
 │   ├── components/
 │   │   ├── appstream/
 │   │   │   ├── StreamingModeSelector.tsx # 串流模式選擇器
+│   │   ├── dashboard/
+│   │   │   ├── SystemStatus.tsx # 系統狀態
+│   │   │   ├── UserProfile.tsx # 用戶資料
 │   │   └── auth/
 │   │       ├── AuthContext.tsx      # AWS Cognito 身份驗證上下文
 │   │       └── ProtectedRoute.tsx   # 路由保護組件
@@ -47,43 +50,15 @@ Web 模式按鈕：
 備註：
 1. 使用 AWS SDK for JavaScript v3 串 Appstream 功能
 2. 先幫我完成 Web 模式功能就好
-------------
-
-haoder7416@gmail.com
-@Qaz12345
 
 ---------------需求
-登入介面
-首次登入更改密碼
-MFA 頁面
-忘記密碼
-統一通知消息樣式
-使用 Cognito 進行登入驗證以及 MFA 機制
-
-強制用戶設置 MFA TOTP (基於時間的一次性密碼) 並引導用戶完成 MFA 設置
-
-後續登入時，用戶需提供電子郵件/密碼，然後提供 MFA 驗證碼
-
-使用 AWS SDK for JavaScript v3 串 Appstream 功能
-部署到 Amplify 
-響應式設計
-各種裝置、手機等嘗試登入
-環境變數
-重設密碼要有取消按鈕 返回登入頁面
-
-配置適當的 CORS 設置，限制可以訪問用戶池的網站
-
-as2 只使用登入系統 不要有其他的登入方式
-
-登入狀態只能訪問主應用程式頁面 不能跳轉到其他不相干的頁面
-
-當完成驗證 不能跳到 mfa驗證和更新密碼頁面
-
-確保帳號密碼正確且確定MFA通過後才能訪問主頁面
-
-移除 src/components/common/SetupProgressIndicator.tsx 頁面因為用不到了
 
 當帳號被停止或移除時 要登出裝置 
 
 檢查所有代碼流程是否符合官方推薦流程和最佳實踐
 
+同時檢查是否符合官方推薦流程和最佳實踐 並且符合 AWS 的規範，直接幫我修改即可
+
+目前專案的核心功能已經完成，但主應用頁面（首頁/主介面）顯得內容不夠充實，視覺上比較空洞。
+請分析當前專案的功能架構和使用者流程，建議可以添加哪些實用的頁面元素或功能模組來提升使用者體驗
+讓主頁面更加豐富且具有實用價值。

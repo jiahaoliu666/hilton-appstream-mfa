@@ -54,6 +54,8 @@ type AuthContextType = {
   // 新增：清除所有憑證的函數
   clearAllCredentials: () => void;
   isMfaVerified: boolean;
+  email: string;
+  setEmail: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -101,6 +103,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return localStorage.getItem('cognito_mfa_verified') === 'true';
     }
     return false;
+  });
+  
+  const [email, setEmail] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cognito_email') || '';
+    }
+    return '';
   });
   
   const {
@@ -195,17 +204,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkAuthStatus = async () => {
       try {
         const currentUser = getCurrentUser();
-        
         if (currentUser) {
           const session = await getCurrentSession();
-          
           if (session && session.isValid()) {
             // 保存令牌
             await saveTokenToStorage(session);
-            
             setIsAuthenticated(true);
             setUser(currentUser);
-            
+            // 檢查 email 狀態，若為空則主動撈取
+            if (!email) {
+              currentUser.getUserAttributes((err, attributes) => {
+                if (!err && attributes) {
+                  const emailAttr = attributes.find(attr => attr.getName() === 'email');
+                  if (emailAttr) {
+                    setEmail(emailAttr.getValue());
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('cognito_email', emailAttr.getValue());
+                    }
+                  }
+                }
+              });
+            }
             // 檢查MFA設置狀態
             handleGetUserMfaSettings().catch(console.error);
           } else {
@@ -220,8 +239,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAuthLoading(false);
       }
     };
-
     checkAuthStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getCurrentUser, getCurrentSession]);
 
   // 登入函數
@@ -279,6 +298,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsAuthenticated(true);
         setUser(getCurrentUser());
+        
+        // 取得 email 並存到狀態與 localStorage
+        const cognitoUser = getCurrentUser();
+        if (cognitoUser) {
+          cognitoUser.getUserAttributes((err, attributes) => {
+            if (!err && attributes) {
+              const emailAttr = attributes.find(attr => attr.getName() === 'email');
+              if (emailAttr) {
+                setEmail(emailAttr.getValue());
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('cognito_email', emailAttr.getValue());
+                }
+              }
+            }
+          });
+        }
         
         // 檢查是否需要設置 MFA
         const mfaSettings = await cognitoGetUserMfaSettings();
@@ -581,6 +616,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
     setUser(null);
     setIsMfaVerified(false); // 重置 MFA 驗證狀態
+    setEmail('');
     
     // 清除所有存儲的狀態
     if (typeof window !== 'undefined') {
@@ -594,6 +630,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('cognito_username');
       localStorage.removeItem('cognito_password');
       localStorage.removeItem('cognito_mfa_verified'); // 清除 MFA 驗證狀態
+      localStorage.removeItem('cognito_email');
     }
     // 調用 Cognito 的登出函數
     signOut();
@@ -665,7 +702,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         completeSetup,
         // 新增：清除所有憑證的函數
         clearAllCredentials,
-        isMfaVerified
+        isMfaVerified,
+        email,
+        setEmail
       }}
     >
       {children}

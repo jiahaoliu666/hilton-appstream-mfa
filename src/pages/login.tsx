@@ -88,6 +88,22 @@ export default function Login() {
     user.authenticateUser(authDetails, {
       onSuccess: () => {
         showSuccess('登入成功');
+        if (user) {
+          user.getSession((err: Error | null, session: any) => {
+            if (!err && session && session.isValid()) {
+              user.getUserAttributes((err2, attributes) => {
+                if (!err2 && attributes) {
+                  const emailAttr = attributes.find(attr => attr.getName() === 'email');
+                  if (emailAttr) {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('cognito_email', emailAttr.getValue());
+                    }
+                  }
+                }
+              });
+            }
+          });
+        }
         setStep('main');
       },
       onFailure: (err) => {

@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { CognitoUserPool } from 'amazon-cognito-identity-js';
 import { cognitoConfig } from '@/lib/config/cognito';
 import { StreamingModeSelector } from '@/components/appstream/StreamingModeSelector';
-import { showError } from '@/utils/notification';
-
+import { showError, showSuccess } from '@/utils/notification';
+import { SystemStatus } from '@/components/dashboard/SystemStatus';
+import { UserProfile } from '@/components/dashboard/UserProfile';
 import Head from 'next/head';
 
 const userPool = new CognitoUserPool({
@@ -14,11 +15,34 @@ const userPool = new CognitoUserPool({
 });
 
 export default function Home() {
-  const { logout, getUserMfaSettings } = useAuth();
+  const { logout, getUserMfaSettings, user, email, setEmail } = useAuth();
   const router = useRouter();
   const [mfaEnabled, setMfaEnabled] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    if (user && !email) {
+      user.getSession((err: Error | null, session: any) => {
+        if (!err && session && session.isValid()) {
+          user.getUserAttributes((err2, attributes) => {
+            console.log('getUserAttributes', err2, attributes);
+            if (!err2 && attributes) {
+              const emailAttr = attributes.find(attr => attr.getName() === 'email');
+              if (emailAttr) {
+                setEmail(emailAttr.getValue());
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('cognito_email', emailAttr.getValue());
+                }
+              }
+            }
+          });
+        } else {
+          console.log('getSession error or invalid:', err);
+        }
+      });
+    }
+  }, [user, email, setEmail]);
 
   useEffect(() => {
     const user = userPool.getCurrentUser();
@@ -59,6 +83,12 @@ export default function Home() {
     router.push('/login');
   };
 
+  const handleStatusChange = (status: string) => {
+    if (status === 'unstable') {
+      showError('網路連線不穩定，請檢查您的網路狀態');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -77,11 +107,15 @@ export default function Home() {
         <title>Hilton AppStream</title>
       </Head>
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Hilton AppStream</h1>
-            <p className="text-gray-600">請選擇您想要的串流模式</p>
+            <p className="text-gray-600">歡迎使用 Hilton AppStream 串流服務</p>
           </div>
+
+          <UserProfile />
+          
+          <SystemStatus onStatusChange={handleStatusChange} />
 
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <StreamingModeSelector />
