@@ -1,4 +1,4 @@
-import { AppStreamClient, CreateStreamingURLCommand } from "@aws-sdk/client-appstream";
+import { AppStreamClient, CreateStreamingURLCommand, DescribeFleetsCommand } from "@aws-sdk/client-appstream";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import apiClient from '../api/apiClient';
 
@@ -107,6 +107,28 @@ export const appStreamService = {
       return { streamingUrl: response.StreamingURL || '' };
     } catch (error) {
       console.error('獲取 APP 串流 URL 失敗:', error);
+      throw error;
+    }
+  },
+
+  // 查詢 Fleet 狀態
+  describeFleets: async (credentials: CredentialsResponse): Promise<any> => {
+    try {
+      const client = new AppStreamClient({
+        region: process.env.NEXT_PUBLIC_AWS_REGION,
+        credentials: {
+          accessKeyId: credentials.accessKeyId,
+          secretAccessKey: credentials.secretAccessKey,
+          sessionToken: credentials.sessionToken
+        }
+      });
+      const command = new DescribeFleetsCommand({
+        Names: [process.env.NEXT_PUBLIC_APPSTREAM_FLEET_NAME!]
+      });
+      const response = await client.send(command);
+      return response.Fleets && response.Fleets.length > 0 ? response.Fleets[0] : null;
+    } catch (error) {
+      console.error('查詢 Fleet 狀態失敗:', error);
       throw error;
     }
   }

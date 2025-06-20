@@ -1,16 +1,44 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { useState, useEffect } from 'react';
 import { SystemStatus } from './SystemStatus';
+import { appStreamService } from '@/lib/services/appStreamService';
 
 export const UserProfile = () => {
-  const { email } = useAuth();
+  const { email, user, isAuthenticated } = useAuth();
   const [lastLoginTime, setLastLoginTime] = useState<string>('');
+  const [credentials, setCredentials] = useState<any>(null);
 
   useEffect(() => {
     // 模擬獲取上次登入時間
     const now = new Date();
     setLastLoginTime(now.toLocaleString('zh-TW'));
   }, []);
+
+  useEffect(() => {
+    // 取得 AWS credentials
+    const fetchCredentials = async () => {
+      if (!user || !isAuthenticated) return;
+      const loginProvider = `cognito-idp.${process.env.NEXT_PUBLIC_COGNITO_REGION}.amazonaws.com/${process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID}`;
+      const session = await new Promise<any>((resolve, reject) => {
+        user.getSession((err: Error | null, session: any) => {
+          if (err) reject(err);
+          else resolve(session);
+        });
+      });
+      const idToken = session.getIdToken().getJwtToken();
+      const identityResponse = await appStreamService.getId(
+        process.env.NEXT_PUBLIC_IDENTITY_POOL_ID || '',
+        loginProvider,
+        idToken
+      );
+      const credentialsResponse = await appStreamService.getCredentials(
+        identityResponse.IdentityId,
+        { [loginProvider]: idToken }
+      );
+      setCredentials(credentialsResponse);
+    };
+    fetchCredentials();
+  }, [user, isAuthenticated]);
 
   return (
     <div className="bg-white rounded-lg shadow p-4 mb-4 flex items-center justify-between">
@@ -30,7 +58,7 @@ export const UserProfile = () => {
         </div>
       </div>
       <div className="ml-4">
-        <SystemStatus />
+        {credentials && <SystemStatus credentials={credentials} />}
       </div>
     </div>
   );

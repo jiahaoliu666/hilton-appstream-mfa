@@ -1,57 +1,69 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { appStreamService } from '@/lib/services/appStreamService';
 
 interface SystemStatusProps {
-  onStatusChange?: (status: string) => void;
+  credentials: {
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken: string;
+  };
 }
 
-export const SystemStatus = ({ onStatusChange }: SystemStatusProps) => {
-  const [sessionTime, setSessionTime] = useState<number>(0);
-  const [connectionStatus, setConnectionStatus] = useState<'stable' | 'unstable' | 'disconnected'>('stable');
+export const SystemStatus = ({ credentials }: SystemStatusProps) => {
+  const [fleetStatus, setFleetStatus] = useState<string>('查詢中...');
+  const [color, setColor] = useState<string>('bg-gray-400');
 
   useEffect(() => {
-    // 更新會話時間
-    const timer = setInterval(() => {
-      setSessionTime(prev => prev + 1);
-    }, 1000);
-
-    // 模擬連接狀態檢查
-    const statusCheck = setInterval(() => {
-      const random = Math.random();
-      if (random > 0.95) {
-        setConnectionStatus('unstable');
-        onStatusChange?.('unstable');
-      } else {
-        setConnectionStatus('stable');
-        onStatusChange?.('stable');
+    let isMounted = true;
+    const fetchStatus = async () => {
+      try {
+        const fleet = await appStreamService.describeFleets(credentials);
+        if (!isMounted) return;
+        const status = fleet?.State || 'UNKNOWN';
+        setFleetStatus(status);
+        switch (status) {
+          case 'RUNNING':
+            setColor('bg-green-500');
+            break;
+          case 'STARTING':
+            setColor('bg-yellow-500');
+            break;
+          case 'STOPPING':
+            setColor('bg-yellow-500');
+            break;
+          case 'STOPPED':
+            setColor('bg-red-500');
+            break;
+          default:
+            setColor('bg-gray-400');
+        }
+      } catch (e) {
+        setFleetStatus('查詢失敗');
+        setColor('bg-gray-400');
       }
-    }, 5000);
-
-    return () => {
-      clearInterval(timer);
-      clearInterval(statusCheck);
     };
-  }, [onStatusChange]);
+    fetchStatus();
+    return () => { isMounted = false; };
+  }, [credentials]);
 
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  // 狀態中文對照
+  const statusMap: Record<string, string> = {
+    RUNNING: '運作中',
+    STARTING: '啟動中',
+    STOPPING: '停止中',
+    STOPPED: '已停止',
+    UNKNOWN: '未知',
+    '查詢失敗': '查詢失敗',
+    '查詢中...': '查詢中...'
   };
 
   return (
     <div className="flex items-center justify-between">
       <h4 className="text-sm font-medium text-gray-500">當前機器狀態</h4>
       <div className="flex items-center ml-2">
-        <div className={`w-3 h-3 rounded-full mr-2 ${
-          connectionStatus === 'stable' ? 'bg-green-500' :
-          connectionStatus === 'unstable' ? 'bg-yellow-500' :
-          'bg-red-500'
-        }`}></div>
+        <div className={`w-3 h-3 rounded-full mr-2 ${color}`}></div>
         <span className="text-lg font-semibold">
-          {connectionStatus === 'stable' ? '穩定' :
-           connectionStatus === 'unstable' ? '不穩定' :
-           '已斷線'}
+          {statusMap[fleetStatus] || fleetStatus}
         </span>
       </div>
     </div>
