@@ -319,7 +319,7 @@ export const useCognito = () => {
     setError(null);
 
     try {
-      const user = currentCognitoUser;
+      const user = currentCognitoUser || userPool.getCurrentUser();
       if (!user) {
         throw new Error('用戶會話已失效，請重新登入');
       }

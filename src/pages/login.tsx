@@ -5,6 +5,7 @@ import { cognitoConfig } from '@/lib/config/cognito';
 import { showError, showSuccess, mapCognitoErrorToMessage } from '@/utils/notification';
 import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/components/auth/AuthContext';
 
 const userPool = new CognitoUserPool({
   UserPoolId: cognitoConfig.userPoolId,
@@ -13,6 +14,7 @@ const userPool = new CognitoUserPool({
 
 export default function Login() {
   const router = useRouter();
+  const { login, verifyMfaCode } = useAuth();
   const [step, setStep] = useState<'login' | 'newPassword' | 'mfaSetup' | 'mfaVerify' | 'main'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -72,63 +74,30 @@ export default function Login() {
     }
   }, [step, router]);
 
+  useEffect(() => {
+    if (step === 'mfaVerify') {
+      setLoading(false);
+    }
+  }, [step]);
+
   // 登入流程
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const authDetails = new AuthenticationDetails({
-      Username: username,
-      Password: password
-    });
-    const user = new CognitoUser({
-      Username: username,
-      Pool: userPool
-    });
-    setCognitoUser(user);
-    user.authenticateUser(authDetails, {
-      onSuccess: () => {
-        showSuccess('登入成功');
-        if (user) {
-          user.getSession((err: Error | null, session: any) => {
-            if (!err && session && session.isValid()) {
-              user.getUserAttributes((err2, attributes) => {
-                if (!err2 && attributes) {
-                  const emailAttr = attributes.find(attr => attr.getName() === 'email');
-                  if (emailAttr) {
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem('cognito_email', emailAttr.getValue());
-                    }
-                  }
-                }
-              });
-            }
-          });
-        }
-        setStep('main');
-      },
-      onFailure: (err) => {
-        const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
-        const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
-        showError(mapCognitoErrorToMessage(code, message) || '登入失敗');
-        setLoading(false);
-      },
-      newPasswordRequired: () => {
+    try {
+      const result = await login(username, password);
+      if (result.success) {
+        router.replace('/');
+      } else if (result.newPasswordRequired) {
         setStep('newPassword');
-        setLoading(false);
-      },
-      mfaSetup: () => {
-        setStep('mfaSetup');
-        setLoading(false);
-      },
-      mfaRequired: () => {
+      } else if (result.mfaRequired) {
         setStep('mfaVerify');
-        setLoading(false);
-      },
-      totpRequired: () => {
-        setStep('mfaVerify');
+      } else {
         setLoading(false);
       }
-    });
+    } catch (err) {
+      setLoading(false);
+    }
   };
 
   // 設置新密碼流程
@@ -205,22 +174,18 @@ export default function Login() {
     });
   };
 
-  const handleVerifyMfa = () => {
-    if (!cognitoUser) return;
+  const handleVerifyMfa = async () => {
     setLoading(true);
-    cognitoUser.sendMFACode(mfaCode, {
-      onSuccess: () => {
-        showSuccess('MFA 驗證成功');
-        setStep('main');
-        setLoading(false);
-      },
-      onFailure: (err) => {
-        const code = (err && typeof err === 'object' && 'code' in err) ? (err as any).code : '';
-        const message = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : '';
-        showError('驗證失敗：' + (mapCognitoErrorToMessage(code, message) || message || '未知錯誤'));
+    try {
+      const ok = await verifyMfaCode(mfaCode);
+      if (ok) {
+        router.replace('/');
+      } else {
         setLoading(false);
       }
-    }, 'SOFTWARE_TOKEN_MFA');
+    } catch (err) {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {
