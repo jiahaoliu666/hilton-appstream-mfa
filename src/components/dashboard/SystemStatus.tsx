@@ -43,7 +43,8 @@ export const SystemStatus = ({ credentials }: SystemStatusProps) => {
       }
     };
     fetchStatus();
-    return () => { isMounted = false; };
+    const interval = setInterval(fetchStatus, 10000); // 每 10 秒刷新
+    return () => { isMounted = false; clearInterval(interval); };
   }, [credentials]);
 
   // 狀態中文對照

@@ -101,9 +101,9 @@ export const mapCognitoErrorToMessage = (errorCode: string, errorMessage?: strin
   }
 
   const errorMessages: Record<string, string> = {
-    [COGNITO_ERROR_CODES.USER_NOT_FOUND]: '查無此用戶，請向系統管理員註冊',
+    [COGNITO_ERROR_CODES.USER_NOT_FOUND]: '查無此用戶，請向工程團隊註冊',
     [COGNITO_ERROR_CODES.NOT_AUTHORIZED]: '請確認電子郵件或密碼是否正確',
-    [COGNITO_ERROR_CODES.RESOURCE_NOT_FOUND]: '系統配置錯誤：認證服務未正確設置，請聯繫系統管理員',
+    [COGNITO_ERROR_CODES.RESOURCE_NOT_FOUND]: '系統配置錯誤：認證服務未正確設置，請聯繫工程團隊',
     [COGNITO_ERROR_CODES.USER_NOT_CONFIRMED]: '用戶尚未確認',
     [COGNITO_ERROR_CODES.USERNAME_EXISTS]: '用戶名已存在',
     [COGNITO_ERROR_CODES.INVALID_PASSWORD]: '密碼不符合要求',

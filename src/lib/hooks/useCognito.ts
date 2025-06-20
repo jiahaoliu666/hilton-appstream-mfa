@@ -294,7 +294,7 @@ export const useCognito = () => {
                  cognitoError.code === 'ResourceNotFoundException' ||
                  cognitoError.message?.includes('User pool client') && 
                  cognitoError.message?.includes('does not exist')) {
-        errorMessage = '認證服務未正確設置，請聯繫系統管理員';
+        errorMessage = '認證服務未正確設置，請聯繫工程團隊';
       } else if (cognitoError.name === 'UserNotConfirmedException') {
         errorMessage = '用戶尚未確認';
       } else {

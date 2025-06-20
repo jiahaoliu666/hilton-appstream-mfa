@@ -7,6 +7,7 @@ export const UserProfile = () => {
   const { email, user, isAuthenticated } = useAuth();
   const [lastLoginTime, setLastLoginTime] = useState<string>('');
   const [credentials, setCredentials] = useState<any>(null);
+  const [credentialError, setCredentialError] = useState<string>('');
 
   useEffect(() => {
     // 模擬獲取上次登入時間
@@ -18,24 +19,30 @@ export const UserProfile = () => {
     // 取得 AWS credentials
     const fetchCredentials = async () => {
       if (!user || !isAuthenticated) return;
-      const loginProvider = `cognito-idp.${process.env.NEXT_PUBLIC_COGNITO_REGION}.amazonaws.com/${process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID}`;
-      const session = await new Promise<any>((resolve, reject) => {
-        user.getSession((err: Error | null, session: any) => {
-          if (err) reject(err);
-          else resolve(session);
+      try {
+        const loginProvider = `cognito-idp.${process.env.NEXT_PUBLIC_COGNITO_REGION}.amazonaws.com/${process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID}`;
+        const session = await new Promise<any>((resolve, reject) => {
+          user.getSession((err: Error | null, session: any) => {
+            if (err) reject(err);
+            else resolve(session);
+          });
         });
-      });
-      const idToken = session.getIdToken().getJwtToken();
-      const identityResponse = await appStreamService.getId(
-        process.env.NEXT_PUBLIC_IDENTITY_POOL_ID || '',
-        loginProvider,
-        idToken
-      );
-      const credentialsResponse = await appStreamService.getCredentials(
-        identityResponse.IdentityId,
-        { [loginProvider]: idToken }
-      );
-      setCredentials(credentialsResponse);
+        const idToken = session.getIdToken().getJwtToken();
+        const identityResponse = await appStreamService.getId(
+          process.env.NEXT_PUBLIC_IDENTITY_POOL_ID || '',
+          loginProvider,
+          idToken
+        );
+        const credentialsResponse = await appStreamService.getCredentials(
+          identityResponse.IdentityId,
+          { [loginProvider]: idToken }
+        );
+        setCredentials(credentialsResponse);
+        setCredentialError('');
+      } catch (err) {
+        setCredentials(null);
+        setCredentialError('系統設定有誤，請聯絡工程團隊協助處理。');
+      }
     };
     fetchCredentials();
   }, [user, isAuthenticated]);
@@ -58,6 +65,9 @@ export const UserProfile = () => {
         </div>
       </div>
       <div className="ml-4">
+        {credentialError && (
+          <div className="text-red-500 text-sm font-medium">{credentialError}</div>
+        )}
         {credentials && <SystemStatus credentials={credentials} />}
       </div>
     </div>
