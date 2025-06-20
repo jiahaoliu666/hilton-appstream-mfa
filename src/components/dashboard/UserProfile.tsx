@@ -1,5 +1,6 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { useState, useEffect } from 'react';
+import { SystemStatus } from './SystemStatus';
 
 export const UserProfile = () => {
   const { email } = useAuth();
@@ -12,7 +13,7 @@ export const UserProfile = () => {
   }, []);
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4">
+    <div className="bg-white rounded-lg shadow p-4 mb-4 flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <div className="flex-shrink-0">
           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -27,6 +28,9 @@ export const UserProfile = () => {
           </h3>
           <p className="text-sm text-gray-500">上次登入時間：{lastLoginTime}</p>
         </div>
+      </div>
+      <div className="ml-4">
+        <SystemStatus />
       </div>
     </div>
   );

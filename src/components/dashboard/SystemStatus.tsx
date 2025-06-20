@@ -40,27 +40,19 @@ export const SystemStatus = ({ onStatusChange }: SystemStatusProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div className="bg-white rounded-lg shadow p-4">
-        <h4 className="text-sm font-medium text-gray-500">當前連線狀態</h4>
-        <div className="mt-2 flex items-center">
-          <div className={`w-3 h-3 rounded-full mr-2 ${
-            connectionStatus === 'stable' ? 'bg-green-500' :
-            connectionStatus === 'unstable' ? 'bg-yellow-500' :
-            'bg-red-500'
-          }`}></div>
-          <span className="text-lg font-semibold">
-            {connectionStatus === 'stable' ? '穩定' :
-             connectionStatus === 'unstable' ? '不穩定' :
-             '已斷線'}
-          </span>
-        </div>
-      </div>
-      <div className="bg-white rounded-lg shadow p-4">
-        <h4 className="text-sm font-medium text-gray-500">會話時長</h4>
-        <div className="mt-2">
-          <span className="text-lg font-semibold">{formatTime(sessionTime)}</span>
-        </div>
+    <div className="flex items-center justify-between">
+      <h4 className="text-sm font-medium text-gray-500">當前機器狀態</h4>
+      <div className="flex items-center ml-2">
+        <div className={`w-3 h-3 rounded-full mr-2 ${
+          connectionStatus === 'stable' ? 'bg-green-500' :
+          connectionStatus === 'unstable' ? 'bg-yellow-500' :
+          'bg-red-500'
+        }`}></div>
+        <span className="text-lg font-semibold">
+          {connectionStatus === 'stable' ? '穩定' :
+           connectionStatus === 'unstable' ? '不穩定' :
+           '已斷線'}
+        </span>
       </div>
     </div>
   );
