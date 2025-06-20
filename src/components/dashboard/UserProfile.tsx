@@ -22,7 +22,9 @@ export const UserProfile = () => {
           </div>
         </div>
         <div>
-          <h3 className="text-lg font-medium">歡迎回來{email ? `，${email}` : ''}</h3>
+          <h3 className="text-lg font-medium">
+            {email ? `${email.split('@')[0]}，歡迎回來` : '歡迎回來'}
+          </h3>
           <p className="text-sm text-gray-500">上次登入時間：{lastLoginTime}</p>
         </div>
       </div>
