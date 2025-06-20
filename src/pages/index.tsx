@@ -106,27 +106,32 @@ export default function Home() {
       <Head>
         <title>Hilton AppStream</title>
       </Head>
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Hilton AppStream</h1>
-            <p className="text-gray-600">歡迎使用 Hilton AppStream 串流服務</p>
+          <div className="text-center mb-10">
+            <img src="/logo.png" alt="Hilton Logo" className="w-24 h-16 mx-auto mb-2 drop-shadow-md" />
+            <h1 className="text-4xl font-extrabold text-gray-900 mb-2 tracking-tight">Hilton AppStream</h1>
+            <p className="text-lg text-gray-600">歡迎使用 Hilton AppStream 串流服務</p>
           </div>
 
           <UserProfile />
           
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <div className="bg-white/80 backdrop-blur-md py-6 px-6 shadow-2xl rounded-2xl sm:px-12 border border-gray-100 max-w-xl mx-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">選擇串流模式</h2>
             <StreamingModeSelector />
-            
-            <div className="mt-6">
+            <div className="mt-8">
               <button
                 onClick={handleLogout}
-                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="w-full py-3 px-4 border border-transparent rounded-xl shadow-sm text-base font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-all duration-200"
               >
                 登出
               </button>
             </div>
           </div>
+
+          <footer className="mt-10 text-center text-gray-400 text-xs select-none">
+            &copy; {new Date().getFullYear()} Hilton AppStream. All rights reserved.
+          </footer>
         </div>
       </div>
     </>

@@ -104,7 +104,6 @@ export const StreamingModeSelector = () => {
 
   return (
     <div className="flex flex-col space-y-4 p-4">
-      <h2 className="text-xl font-bold mb-4">選擇串流模式</h2>
       <button
         onClick={handleWebMode}
         disabled={isLoading || !isAuthenticated}

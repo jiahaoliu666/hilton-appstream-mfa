@@ -48,7 +48,7 @@ export const UserProfile = () => {
   }, [user, isAuthenticated]);
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4 flex items-center justify-between">
+    <div className="bg-white rounded-lg shadow p-4 mb-4 flex items-center justify-between max-w-xl mx-auto">
       <div className="flex items-center space-x-4">
         <div className="flex-shrink-0">
           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -61,7 +61,6 @@ export const UserProfile = () => {
           <h3 className="text-lg font-medium">
             {email ? `${email.split('@')[0]}，歡迎回來` : '歡迎回來'}
           </h3>
-          <p className="text-sm text-gray-500">上次登入時間：{lastLoginTime}</p>
         </div>
       </div>
       <div className="ml-4">
